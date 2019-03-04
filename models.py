@@ -76,28 +76,21 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.vocab_size = vocab_size
         self.num_layers = num_layers
         self.p = 1 - dp_keep_prob
+        self.embeddings = nn.Embedding(vocab_size, emb_size)
 
+        self.rnn_layer = RNNLayer(emb_size, hidden_size, seq_len, batch_size, vocab_size, dp_keep_prob)
+        self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
 
-        self.W_x = torch.nn.Parameter(torch.empty(self.hidden_size, self.emb_size))
-
-        self.W_h = torch.nn.Parameter(torch.empty(self.hidden_size, self.hidden_size))
-        self.b_h = torch.nn.Parameter(torch.zeros([self.hidden_size, 1]))
-
-        self.W_y = torch.nn.Parameter(torch.empty(self.vocab_size, self.hidden_size))
-        self.b_y = torch.nn.Parameter(torch.zeros([self.vocab_size, 1]))
-
-        # parameters = (self.W_x, self.W_h, self.b_h, self.W_y, self.b_y)
-        parameters = (self.W_x, self.W_h, self.b_h)
-
-        self.parameters = clones(self.W_x, self.num_layers)
+        self.layers = clones(self.rnn_layer, self.num_layers)
 
     def init_weights_uniform(self):
         # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        torch.nn.init.uniform(self.W_x, a=-0.1, b=0.1)
-        torch.nn.init.uniform(self.W_h, a=-0.1, b=0.1)
-        torch.nn.init.uniform(self.W_y, a=-0.1, b=0.1)
+        nn.init.uniform_(self.output_layer.weight, a=-0.1, b=0.1)
+        nn.init.zeros_(self.output_layer.bias)
+        for i in range(len(self.layers)):
+            self.layers[i].init_weights_uniform()
 
     def init_hidden(self):
         # TODO ========================
@@ -105,6 +98,8 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         """
         This is used for the first mini-batch in an epoch, only.
         """
+        # h = torch.empty([self.num_layers, self.batch_size, self.hidden_size])
+        # nn.init.zeros_(h)
         h = torch.zeros([self.num_layers, self.batch_size, self.hidden_size])
         return h
 
@@ -144,22 +139,24 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                   if you are curious.
                         shape: (num_layers, batch_size, hidden_size)
         """
-        logits = torch.nn.Parameter(torch.zeros([self.seq_len, self.batch_size, self.vocab_size]))
-        C = None
+        logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size])
+        C = self.embeddings(inputs)
+        C = C.view(self.seq_len, -1, self.emb_size)
+        h_zero = torch.zeros([self.batch_size, self.hidden_size])
+        h = copy.deepcopy(hidden)
         for t in range(self.seq_len):
-            w = inputs
-            x = w[t]
+            x = C[t]  # x shape: [batch_size, embed_size]
             for layer in range(self.num_layers):
-                w_x, w_h, b_h = self.parameters[layer]
-                a = torch.mm(w_x, x)  # W
-                b = torch.mm(w_h, hidden[layer].view(self.hidden_size, -1))
-                hidden[layer] = torch.nn.Tanh(a + b + b_h)
-                x = hidden[layer]
-            # logits = torch.mm(self.W_y, hidden[self.num_layers].view(self.hidden_size, -1)) + self.b_y
-            logits[t] = torch.mm(self.W_y, x) + self.b_y
+                if t == 0:
+                    h[layer] = self.layers[layer](x, h_zero)
+                else:
+                    h[layer] = self.layers[layer](x, h[layer])
 
-        # return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
-        return logits, hidden
+                x = h[layer]  # h_
+                # h(layer) shape: [batch_size, hidden_size]
+                # x = hidden[layer]  # x_shape: [batch_size, hidden_size]
+            logits[t] = self.output_layer(hidden[self.num_layers-1])  # logits[t] shape: [batch_size, vocab_size]=
+        return logits.view(self.seq_len, self.batch_size, self.vocab_size), h
 
     def generate(self, input, hidden, generated_seq_len):
         # TODO ========================
@@ -190,11 +187,44 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         samples = torch.zeros([generated_seq_len, self.batch_size])
         for i in generated_seq_len:
             logits, hidden = self.forward(input, hidden)
-            input = torch.argmax(torch.nn.Softmax(logits))
+            input = torch.argmax(nn.Softmax(logits))
             samples[i] = input
 
         return samples
 
+
+class RNNLayer(nn.Module):
+    def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, dp_keep_prob):
+        super(RNNLayer, self).__init__()
+        self.tanh = nn.Tanh()
+
+        self.emb_size = emb_size
+        self.hidden_size = hidden_size
+        self.seq_len = seq_len
+        self.batch_size = batch_size
+        self.vocab_size = vocab_size
+        self.p = 1 - dp_keep_prob
+        self.linear1 = nn.Linear(self.emb_size, self.hidden_size, bias=False)
+        print(self.linear1.weight.shape)
+        self.linear2 = nn.Linear(self.hidden_size, self.hidden_size)
+        print(self.linear2.weight.shape)
+        self.dropout = nn.Dropout(p=self.p)
+
+    def init_weights_uniform(self):
+        # TODO ========================
+        # Initialize all the weights uniformly in the range [-0.1, 0.1]
+        # and all the biases to 0 (in place)
+        nn.init.uniform_(self.linear1.weight, a=-0.1, b=0.1)  # W_x
+        nn.init.uniform_(self.linear2.weight, a=-0.1, b=0.1)  # W_h
+        nn.init.zeros_(self.linear2.bias)  # b_h
+
+    def forward(self, x, h):
+        x = self.linear1(x)
+        h = self.linear2(h)
+        out = x + h  # W_x dot x + W_h dot h
+        out = self.tanh(out)
+        out = self.dropout(out)
+        return out
 
 # Problem 2
 class GRU(nn.Module):  # Implement a stacked GRU RNN
