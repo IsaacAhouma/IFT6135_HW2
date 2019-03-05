@@ -80,7 +80,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         self.input_layer = RNNLayer(emb_size, hidden_size, dp_keep_prob)
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, dp_keep_prob)
-        # self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
         self.layers = clones(self.rnn_layer, self.num_layers-1)
@@ -145,22 +144,18 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size])
         C = nn.Parameter(self.embeddings(inputs))
         C = C.view(self.seq_len, -1, self.emb_size)
-        h_zero = torch.zeros([self.batch_size, self.hidden_size])
+
 
         if torch.cuda.is_available():
-            h_zero = h_zero.cuda()
             logits = logits.cuda()
 
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
+            h_prev = nn.Parameter(hidden)  # h(layer) shape: [batch_size, hidden_size]
             for layer in range(self.num_layers):
-                if t == 0:
-                    hidden[layer] = self.layers[layer](x, h_zero)
-                else:
-                    hidden[layer] = self.layers[layer](x, h_prev[layer])
+                hidden[layer] = self.layers[layer](x, h_prev[layer])
                 x = hidden[layer].clone()  # h_
-            h_prev = hidden
-            h_prev = nn.Parameter(h_prev) # h(layer) shape: [batch_size, hidden_size]
+            # h_prev = nn.Parameter(hidden)  # h(layer) shape: [batch_size, hidden_size]
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
