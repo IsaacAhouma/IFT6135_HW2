@@ -79,16 +79,19 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
         self.rnn_layer = RNNLayer(emb_size, hidden_size, seq_len, batch_size, vocab_size, dp_keep_prob)
-        self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
+        # self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
+        self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
+        self.W_y = nn.Parameter(torch.empty(vocab_size, hidden_size))
+        self.b_y = nn.Parameter(torch.empty(vocab_size, 1))
 
         self.layers = clones(self.rnn_layer, self.num_layers)
+        self.init_weights_uniform()
 
     def init_weights_uniform(self):
         # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        nn.init.uniform_(self.output_layer.weight, a=-0.1, b=0.1)
-        nn.init.zeros_(self.output_layer.bias)
+        self.output_layer.init_weights_uniform()
         for i in range(len(self.layers)):
             self.layers[i].init_weights_uniform()
 
@@ -140,23 +143,30 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                         shape: (num_layers, batch_size, hidden_size)
         """
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size])
-        C = self.embeddings(inputs)
+        # inputs = inputs.view(self.batch_size, -1)
+        C = nn.Parameter(self.embeddings(inputs))
+        # print(C.shape)
         C = C.view(self.seq_len, -1, self.emb_size)
         h_zero = torch.zeros([self.batch_size, self.hidden_size])
-        h = copy.deepcopy(hidden)
+        # h = copy.deepcopy(hidden)
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
+            # print(x.shape)
             for layer in range(self.num_layers):
                 if t == 0:
-                    h[layer] = self.layers[layer](x, h_zero)
+                    hidden[layer] = self.layers[layer](x, h_zero)
                 else:
-                    h[layer] = self.layers[layer](x, h[layer])
+                    hidden[layer] = self.layers[layer](x, h_prev[layer])
+                    # x = hidden[layer]
 
-                x = h[layer]  # h_
+                x = hidden[layer].clone()  # h_
+            h_prev = hidden
+            h_prev = nn.Parameter(h_prev)
                 # h(layer) shape: [batch_size, hidden_size]
                 # x = hidden[layer]  # x_shape: [batch_size, hidden_size]
-            logits[t] = self.output_layer(hidden[self.num_layers-1])  # logits[t] shape: [batch_size, vocab_size]=
-        return logits.view(self.seq_len, self.batch_size, self.vocab_size), h
+            # x = nn.Parameter(x)
+            logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
+        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
     def generate(self, input, hidden, generated_seq_len):
         # TODO ========================
@@ -225,6 +235,23 @@ class RNNLayer(nn.Module):
         out = self.tanh(out)
         out = self.dropout(out)
         return out
+
+
+class LinearLayer(nn.Module):
+    def __init__(self, hidden_size, vocab_size):
+        super(LinearLayer, self).__init__()
+        self.fc = nn.Linear(hidden_size, vocab_size)
+
+    def init_weights_uniform(self):
+        # Initialize all the weights uniformly in the range [-0.1, 0.1]
+        # and all the biases to 0 (in place)
+        nn.init.uniform_(self.fc.weight, a=-0.1, b=0.1)  # W_y
+        nn.init.zeros_(self.fc.bias)  # b_y
+
+    def forward(self, x):
+        out = self.fc(x)
+        return out
+
 
 # Problem 2
 class GRU(nn.Module):  # Implement a stacked GRU RNN
