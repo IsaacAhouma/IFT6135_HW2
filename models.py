@@ -81,10 +81,12 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.rnn_layer = RNNLayer(emb_size, hidden_size, seq_len, batch_size, vocab_size, dp_keep_prob)
         # self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
+        self.input_layer = LinearLayer(self.emb_size, hidden_size)
         self.W_y = nn.Parameter(torch.empty(vocab_size, hidden_size))
         self.b_y = nn.Parameter(torch.empty(vocab_size, 1))
 
-        self.layers = clones(self.rnn_layer, self.num_layers)
+        self.layers = clones(self.rnn_layer, self.num_layers-1)
+        self.layers = nn.ModuleList([self.input_layer, *self.layers])
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
@@ -214,7 +216,7 @@ class RNNLayer(nn.Module):
         self.batch_size = batch_size
         self.vocab_size = vocab_size
         self.p = 1 - dp_keep_prob
-        self.linear1 = nn.Linear(self.emb_size, self.hidden_size, bias=False)
+        self.linear1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
         # print(self.linear1.weight.shape)
         self.linear2 = nn.Linear(self.hidden_size, self.hidden_size)
         # print(self.linear2.weight.shape)
