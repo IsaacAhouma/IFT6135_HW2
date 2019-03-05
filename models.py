@@ -215,9 +215,9 @@ class RNNLayer(nn.Module):
         self.vocab_size = vocab_size
         self.p = 1 - dp_keep_prob
         self.linear1 = nn.Linear(self.emb_size, self.hidden_size, bias=False)
-        print(self.linear1.weight.shape)
+        # print(self.linear1.weight.shape)
         self.linear2 = nn.Linear(self.hidden_size, self.hidden_size)
-        print(self.linear2.weight.shape)
+        # print(self.linear2.weight.shape)
         self.dropout = nn.Dropout(p=self.p)
 
     def init_weights_uniform(self):
