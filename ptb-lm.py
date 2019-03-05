@@ -117,7 +117,7 @@ parser.add_argument('--batch_size', type=int, default=20,
                     help='size of one minibatch')
 parser.add_argument('--initial_lr', type=float, default=20.0,
                     help='initial learning rate')
-parser.add_argument('--hidden_size', type=int, default=1500,
+parser.add_argument('--hidden_size', type=int, default=200,
                     help='size of hidden layers. IMPORTANT: for the transformer\
                     this must be a multiple of 16.')
 parser.add_argument('--save_best', action='store_true',
