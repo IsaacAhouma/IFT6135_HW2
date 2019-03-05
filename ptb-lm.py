@@ -117,7 +117,7 @@ parser.add_argument('--batch_size', type=int, default=20,
                     help='size of one minibatch')
 parser.add_argument('--initial_lr', type=float, default=20.0,
                     help='initial learning rate')
-parser.add_argument('--hidden_size', type=int, default=200,
+parser.add_argument('--hidden_size', type=int, default=1500,
                     help='size of hidden layers. IMPORTANT: for the transformer\
                     this must be a multiple of 16.')
 parser.add_argument('--save_best', action='store_true',
@@ -320,7 +320,7 @@ elif args.model == 'TRANSFORMER':
 else:
   print("Model type not recognized.")
 
-model = model.to(device)
+model.to(device)
 
 # LOSS FUNCTION
 loss_fn = nn.CrossEntropyLoss()
@@ -369,7 +369,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     start_time = time.time()
     if args.model != 'TRANSFORMER':
         hidden = model.init_hidden()
-        hidden = hidden.to(device)
+        hidden.to(device)
     costs = 0.0
     iters = 0
     losses = []
@@ -383,7 +383,6 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             #print ("outputs.shape", outputs.shape)
         else:
             inputs = torch.from_numpy(x.astype(np.int64)).transpose(0, 1).contiguous().to(device)#.cuda()
-            inputs = inputs.to(device)
             model.zero_grad()
             hidden = repackage_hidden(hidden)
             outputs, hidden = model(inputs, hidden)
