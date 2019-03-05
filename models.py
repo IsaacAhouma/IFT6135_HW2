@@ -82,8 +82,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, dp_keep_prob)
         # self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
-        self.W_y = nn.Parameter(torch.empty(vocab_size, hidden_size))
-        self.b_y = nn.Parameter(torch.empty(vocab_size, 1))
 
         self.layers = clones(self.rnn_layer, self.num_layers-1)
         self.layers = nn.ModuleList([self.input_layer, *self.layers])
@@ -145,7 +143,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size])
         C = nn.Parameter(self.embeddings(inputs))
         C = C.view(self.seq_len, -1, self.emb_size)
-        h_zero = torch.zeros([self.batch_size, self.hidden_size])
+        h_zero = torch.zeros([self.batch_size, self.hidden_size]).cuda()
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
             for layer in range(self.num_layers):
