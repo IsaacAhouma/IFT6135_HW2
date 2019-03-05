@@ -142,7 +142,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                         shape: (num_layers, batch_size, hidden_size)
         """
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size])
-        C = self.embeddings(inputs)
+        C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
         C = C.view(self.seq_len, -1, self.emb_size)
 
         if torch.cuda.is_available():
