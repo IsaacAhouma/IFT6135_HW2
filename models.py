@@ -78,10 +78,10 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.rnn_layer = RNNLayer(emb_size, hidden_size, seq_len, batch_size, vocab_size, dp_keep_prob)
+        self.input_layer = RNNLayer(emb_size, hidden_size, dp_keep_prob)
+        self.rnn_layer = RNNLayer(hidden_size, hidden_size, dp_keep_prob)
         # self.output_layer = nn.Linear(self.hidden_size, self.vocab_size)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
-        self.input_layer = LinearLayer(self.emb_size, hidden_size)
         self.W_y = nn.Parameter(torch.empty(vocab_size, hidden_size))
         self.b_y = nn.Parameter(torch.empty(vocab_size, 1))
 
@@ -206,19 +206,16 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
 
 class RNNLayer(nn.Module):
-    def __init__(self, emb_size, hidden_size, seq_len, batch_size, vocab_size, dp_keep_prob):
+    def __init__(self, in_dim, out_dim, dp_keep_prob):
         super(RNNLayer, self).__init__()
         self.tanh = nn.Tanh()
 
-        self.emb_size = emb_size
-        self.hidden_size = hidden_size
-        self.seq_len = seq_len
-        self.batch_size = batch_size
-        self.vocab_size = vocab_size
+        self.in_dim = in_dim
+        self.out_dim = out_dim
         self.p = 1 - dp_keep_prob
-        self.linear1 = nn.Linear(self.hidden_size, self.hidden_size, bias=False)
+        self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
         # print(self.linear1.weight.shape)
-        self.linear2 = nn.Linear(self.hidden_size, self.hidden_size)
+        self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         # print(self.linear2.weight.shape)
         self.dropout = nn.Dropout(p=self.p)
 
