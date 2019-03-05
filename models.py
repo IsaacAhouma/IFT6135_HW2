@@ -103,8 +103,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         """
         This is used for the first mini-batch in an epoch, only.
         """
-        # h = torch.empty([self.num_layers, self.batch_size, self.hidden_size])
-        # nn.init.zeros_(h)
         h = torch.zeros([self.num_layers, self.batch_size, self.hidden_size])
         return h
 
@@ -145,28 +143,19 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                         shape: (num_layers, batch_size, hidden_size)
         """
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size])
-        # inputs = inputs.view(self.batch_size, -1)
         C = nn.Parameter(self.embeddings(inputs))
-        # print(C.shape)
         C = C.view(self.seq_len, -1, self.emb_size)
         h_zero = torch.zeros([self.batch_size, self.hidden_size])
-        # h = copy.deepcopy(hidden)
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
-            # print(x.shape)
             for layer in range(self.num_layers):
                 if t == 0:
                     hidden[layer] = self.layers[layer](x, h_zero)
                 else:
                     hidden[layer] = self.layers[layer](x, h_prev[layer])
-                    # x = hidden[layer]
-
                 x = hidden[layer].clone()  # h_
             h_prev = hidden
-            h_prev = nn.Parameter(h_prev)
-                # h(layer) shape: [batch_size, hidden_size]
-                # x = hidden[layer]  # x_shape: [batch_size, hidden_size]
-            # x = nn.Parameter(x)
+            h_prev = nn.Parameter(h_prev) # h(layer) shape: [batch_size, hidden_size]
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
@@ -214,9 +203,7 @@ class RNNLayer(nn.Module):
         self.out_dim = out_dim
         self.p = 1 - dp_keep_prob
         self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        # print(self.linear1.weight.shape)
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
-        # print(self.linear2.weight.shape)
         self.dropout = nn.Dropout(p=self.p)
 
     def init_weights_uniform(self):
