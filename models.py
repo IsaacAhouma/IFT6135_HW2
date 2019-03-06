@@ -43,55 +43,37 @@ def clones(module, N):
 
 
 class RNNLayer(nn.Module):
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, in_dim, out_dim, dp_keep_prob):
         super(RNNLayer, self).__init__()
         self.tanh = nn.Tanh()
 
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.linear_x = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        self.linear_h = nn.Linear(self.out_dim, self.out_dim)
-        self.linear_out = nn.Linear(self.out_dim, self.in_dim)
+        self.p = 1 - dp_keep_prob
+        self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
+        self.linear2 = nn.Linear(self.out_dim, self.out_dim)
+        self.dropout = nn.Dropout(p=self.p)
 
     def init_weights_uniform(self):
         # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        nn.init.uniform_(self.linear_x.weight, a=-0.1, b=0.1)  # W_x
-        nn.init.uniform_(self.linear_h.weight, a=-0.1, b=0.1)  # W_h
-        nn.init.zeros_(self.linear_h.bias)  # b_h
-        nn.init.uniform_(self.linear_out.weight, a=-0.1, b=0.1)  # W_h
-        nn.init.zeros_(self.linear_out.bias)  # b_h
+        nn.init.uniform_(self.linear1.weight, a=-0.1, b=0.1)  # W_x
+        nn.init.uniform_(self.linear2.weight, a=-0.1, b=0.1)  # W_h
+        nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
-        x = self.linear_x(x)
-        h = self.linear_h(h)
+        x = self.linear1(x)
+        h = self.linear2(h)
         out = x + h  # W_x dot x + W_h dot h
         out = self.tanh(out)
-        return out
-
-
-class LinearLayer(nn.Module):
-    def __init__(self, hidden_size, emb_size, p):
-        super(LinearLayer, self).__init__()
-        self.fc = nn.Linear(hidden_size, emb_size)
-        self.dropout = nn.Dropout(p)
-
-    def init_weights_uniform(self):
-        # Initialize all the weights uniformly in the range [-0.1, 0.1]
-        # and all the biases to 0 (in place)
-        nn.init.uniform_(self.fc.weight, a=-0.1, b=0.1)  # W_y
-        nn.init.zeros_(self.fc.bias)  # b_y
-
-    def forward(self, x):
-        out = self.fc(x)
         out = self.dropout(out)
         return out
 
 
-class OutputLayer(nn.Module):
+class LinearLayer(nn.Module):
     def __init__(self, hidden_size, vocab_size):
-        super(OutputLayer, self).__init__()
+        super(LinearLayer, self).__init__()
         self.fc = nn.Linear(hidden_size, vocab_size)
 
     def init_weights_uniform(self):
@@ -142,12 +124,13 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.linear_layer = LinearLayer(hidden_size, emb_size, self.p)
-        self.rnn_layer = RNNLayer(emb_size, hidden_size)
-        self.output_layer = OutputLayer(self.hidden_size, self.vocab_size)
+        self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
+        self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
+        self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
-        self.recurrent_layers = clones(self.rnn_layer, self.num_layers)
-        self.linear_layers = clones(self.linear_layer, self.num_layers)
+        self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
+        # self.layers = nn.ModuleList([self.input_layer, *self.layers])
+        self.recurrent_layers.insert(0, self.input_layer)
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
@@ -155,11 +138,8 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
-        for layer in self.recurrent_layers:
-            layer.init_weights_uniform()
-
-        for layer in self.linear_layers:
-            layer.init_weights_uniform()
+        for i in range(len(self.recurrent_layers)):
+            self.recurrent_layers[i].init_weights_uniform()
 
     def init_hidden(self):
         # TODO ========================
@@ -209,15 +189,17 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                         shape: (num_layers, batch_size, hidden_size)
         """
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size], device=inputs.device)
-        C = self.embeddings(inputs.transpose(0, 1))
+        # C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
+        C = self.embeddings(inputs.transpose(0,1))
         C = C.view(self.seq_len, -1, self.emb_size)
 
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
+            # h_prev = hidden  # h(layer) shape: [batch_size, hidden_size]
             for layer in range(self.num_layers):
                 hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
-                x = self.linear_layers[layer](hidden[layer].clone())
-            logits[t] = self.output_layer(hidden[layer].clone())  # logits[t] shape: [batch_size, vocab_size]
+                x = hidden[layer].clone()  # h_
+            logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
     def generate(self, input, hidden, generated_seq_len):
