@@ -249,7 +249,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         samples = torch.zeros([generated_seq_len, self.batch_size])
         for i in generated_seq_len:
             logits, hidden = self.forward(input, hidden)
-            input = torch.argmax(nn.Softmax(logits))
+            input = torch.argmax(nn.Softmax(logits), dim=2)
             samples[i] = input
 
         return samples
