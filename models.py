@@ -43,15 +43,14 @@ def clones(module, N):
 
 
 class RNNLayer(nn.Module):
-    def __init__(self, in_dim, out_dim):
+    def __init__(self, embed_size, hidden_size):
         super(RNNLayer, self).__init__()
         self.tanh = nn.Tanh()
 
-        self.in_dim = in_dim
-        self.out_dim = out_dim
-        self.linear_x = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        self.linear_h = nn.Linear(self.out_dim, self.out_dim)
-        self.linear_out = nn.Linear(self.out_dim, self.in_dim)
+        self.embed_size = embed_size
+        self.hidden_size = hidden_size
+        self.linear_x = nn.Linear(self.embed_size, self.hidden_size, bias=False)
+        self.linear_h = nn.Linear(self.hidden_size, self.hidden_size)
 
     def init_weights_uniform(self):
         # TODO ========================
@@ -60,8 +59,6 @@ class RNNLayer(nn.Module):
         nn.init.uniform_(self.linear_x.weight, a=-0.1, b=0.1)  # W_x
         nn.init.uniform_(self.linear_h.weight, a=-0.1, b=0.1)  # W_h
         nn.init.zeros_(self.linear_h.bias)  # b_h
-        nn.init.uniform_(self.linear_out.weight, a=-0.1, b=0.1)  # W_h
-        nn.init.zeros_(self.linear_out.bias)  # b_h
 
     def forward(self, x, h):
         x = self.linear_x(x)
@@ -210,7 +207,8 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                         shape: (num_layers, batch_size, hidden_size)
         """
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size], device=inputs.device)
-        C = self.embeddings(inputs.transpose(0, 1))
+        # C = self.embeddings(inputs.transpose(0, 1))
+        C = self.embeddings(inputs.view(self.batch_size, -1))
         C = C.view(self.seq_len, -1, self.emb_size)
 
         for t in range(self.seq_len):
