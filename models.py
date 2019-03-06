@@ -251,7 +251,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
             logits, hidden = self.forward(input, hidden)
             input = torch.argmax(nn.Softmax(logits), dim=2)
             samples[i] = input
-
         return samples
 
 
