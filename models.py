@@ -129,7 +129,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
         self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
-        # self.layers = nn.ModuleList([self.input_layer, *self.layers])
         self.recurrent_layers.insert(0, self.input_layer)
         self.init_weights_uniform()
 
@@ -195,7 +194,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
-            # h_prev = hidden  # h(layer) shape: [batch_size, hidden_size]
             for layer in range(self.num_layers):
                 hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
                 x = hidden[layer].clone()  # h_
