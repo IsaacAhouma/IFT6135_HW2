@@ -191,7 +191,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
         C = self.embeddings(inputs.transpose(0,1))
         C = C.view(self.seq_len, -1, self.emb_size)
-
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
             for layer in range(self.num_layers):
