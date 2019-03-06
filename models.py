@@ -77,8 +77,8 @@ class FullyConnectedLayer(nn.Module):
     def init_weights_uniform(self):
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        nn.init.uniform_(self.fc.weight, a=-0.1, b=0.1)  # W_y
-        nn.init.zeros_(self.fc.bias)  # b_y
+        nn.init.uniform_(self.fc.weight, a=-0.1, b=0.1, bias=False)  # W_y
+        # nn.init.zeros_(self.fc.bias)  # b_y
 
     def forward(self, x):
         out = self.fc(x)
@@ -153,6 +153,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
+
         for layer in self.recurrent_layers:
             layer.init_weights_uniform()
 
