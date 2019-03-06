@@ -43,13 +43,13 @@ def clones(module, N):
 
 
 class RNNLayer(nn.Module):
-    def __init__(self, embed_size, hidden_size):
+    def __init__(self, in_dim, out_dim):
         super(RNNLayer, self).__init__()
         self.tanh = nn.Tanh()
-        self.embed_size = embed_size
-        self.hidden_size = hidden_size
-        self.linear_x = nn.Linear(self.embed_size, self.hidden_size, bias=False)
-        self.linear_h = nn.Linear(self.hidden_size, self.hidden_size)
+        self.in_dim = in_dim
+        self.out_dim = out_dim
+        self.linear_x = nn.Linear(self.in_dim, self.out_dim, bias=False)
+        self.linear_h = nn.Linear(self.out_dim, self.out_dim)
 
     def init_weights_uniform(self):
         # TODO ========================
@@ -80,8 +80,8 @@ class FullyConnectedLayer(nn.Module):
         nn.init.zeros_(self.fc.bias)  # b_y
 
     def forward(self, x):
+        x = self.dropout(x)
         out = self.fc(x)
-        out = self.dropout(out)
         return out
 
 
@@ -139,11 +139,13 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.fully_connected_layer = FullyConnectedLayer(hidden_size, emb_size, self.p)
-        self.rnn_layer = RNNLayer(emb_size, hidden_size)
+        self.fully_connected_layer = FullyConnectedLayer(hidden_size, hidden_size, self.p)
+        self.input_layer = RNNLayer(emb_size, hidden_size)
+        self.rnn_layer = RNNLayer(hidden_size, hidden_size)
         self.output_layer = OutputLayer(self.hidden_size, self.vocab_size)
 
-        self.recurrent_layers = clones(self.rnn_layer, self.num_layers)
+        self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
+        self.recurrent_layers.insert(0, self.input_layer)
         self.fully_connected_layers = clones(self.fully_connected_layer, self.num_layers)
         self.init_weights_uniform()
 
