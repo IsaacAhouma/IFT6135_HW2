@@ -71,9 +71,9 @@ class RNNLayer(nn.Module):
         return out
 
 
-class LinearLayer(nn.Module):
+class FullyConnectedLayer(nn.Module):
     def __init__(self, hidden_size, emb_size, p):
-        super(LinearLayer, self).__init__()
+        super(FullyConnectedLayer, self).__init__()
         self.fc = nn.Linear(hidden_size, emb_size)
         self.dropout = nn.Dropout(p)
 
@@ -142,12 +142,12 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.linear_layer = LinearLayer(hidden_size, emb_size, self.p)
+        self.fully_connected_layer = FullyConnectedLayer(hidden_size, emb_size, self.p)
         self.rnn_layer = RNNLayer(emb_size, hidden_size)
         self.output_layer = OutputLayer(self.hidden_size, self.vocab_size)
 
         self.recurrent_layers = clones(self.rnn_layer, self.num_layers)
-        self.linear_layers = clones(self.linear_layer, self.num_layers)
+        self.fully_connected_layers = clones(self.fully_connected_layer, self.num_layers)
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
@@ -158,7 +158,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         for layer in self.recurrent_layers:
             layer.init_weights_uniform()
 
-        for layer in self.linear_layers:
+        for layer in self.fully_connected_layers:
             layer.init_weights_uniform()
 
     def init_hidden(self):
@@ -216,7 +216,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
             x = C[t]  # x shape: [batch_size, embed_size]
             for layer in range(self.num_layers):
                 hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
-                x = self.linear_layers[layer](hidden[layer].clone())
+                x = self.fully_connected_layers[layer](hidden[layer].clone())
             logits[t] = self.output_layer(hidden[layer].clone())  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
