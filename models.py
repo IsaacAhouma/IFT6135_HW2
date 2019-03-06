@@ -46,7 +46,6 @@ class RNNLayer(nn.Module):
     def __init__(self, embed_size, hidden_size):
         super(RNNLayer, self).__init__()
         self.tanh = nn.Tanh()
-
         self.embed_size = embed_size
         self.hidden_size = hidden_size
         self.linear_x = nn.Linear(self.embed_size, self.hidden_size, bias=False)
@@ -78,7 +77,7 @@ class FullyConnectedLayer(nn.Module):
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         nn.init.uniform_(self.fc.weight, a=-0.1, b=0.1)  # W_y
-        # nn.init.zeros_(self.fc.bias)  # b_y
+        nn.init.zeros_(self.fc.bias)  # b_y
 
     def forward(self, x):
         out = self.fc(x)
