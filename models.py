@@ -154,7 +154,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
-        nn.init.uniform_(self.embeddings.weight, a=-0.1, b=0.1)
+        # nn.init.uniform_(self.embeddings.weight, a=-0.1, b=0.1)
         for layer in self.recurrent_layers:
             layer.init_weights_uniform()
 
