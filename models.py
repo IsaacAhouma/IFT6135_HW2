@@ -147,6 +147,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         This is used for the first mini-batch in an epoch, only.
         """
         h = torch.zeros([self.num_layers, self.batch_size, self.hidden_size])
+        h = Variable(h, requires_grad=True)
         if torch.cuda.is_available():
             h = h.cuda()
         return h
@@ -191,12 +192,15 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
         C = self.embeddings(inputs.transpose(0, 1))
         C = C.view(self.seq_len, -1, self.emb_size)
+        h = hidden
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
+            h = hidden.clone()
             for layer in range(self.num_layers):
-                hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
-                x = hidden[layer].clone()  # h_
+                hidden[layer] = self.recurrent_layers[layer](x, h[layer])
+                x = h[layer]  # h_
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
+        # hidden = h
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
     def generate(self, input, hidden, generated_seq_len):
