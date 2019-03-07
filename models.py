@@ -147,7 +147,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         This is used for the first mini-batch in an epoch, only.
         """
         h = torch.zeros([self.num_layers, self.batch_size, self.hidden_size])
-        h = Variable(h, requires_grad=True)
+        # h = Variable(h, requires_grad=True)
         if torch.cuda.is_available():
             h = h.cuda()
         return h
