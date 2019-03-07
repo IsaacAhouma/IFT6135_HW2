@@ -124,7 +124,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.input_layer = RNNLayer(emb_size, hidden_size, 0)
+        self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
