@@ -63,7 +63,7 @@ class RNNLayer(nn.Module):
         nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
-        # x = self.dropout(x)
+        x = self.dropout(x)
         x = self.linear1(x)
         h = self.linear2(h)
         out = x + h  # W_x dot x + W_h dot h
@@ -197,7 +197,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
             for layer in range(self.num_layers):
                 hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
                 x = hidden[layer].clone()  # h_
-                x = nn.Dropout(self.p)(x)
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
