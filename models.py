@@ -53,6 +53,7 @@ class RNNLayer(nn.Module):
         self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         self.dropout = nn.Dropout(p=self.p)
+        self.init_weights_uniform()
 
     def init_weights_uniform(self):
         # TODO ========================
@@ -75,6 +76,7 @@ class LinearLayer(nn.Module):
     def __init__(self, hidden_size, vocab_size):
         super(LinearLayer, self).__init__()
         self.fc = nn.Linear(hidden_size, vocab_size)
+        self.init_weights_uniform()
 
     def init_weights_uniform(self):
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
@@ -126,18 +128,18 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
+        self.last_rnn_layer = RNNLayer(hidden_size, hidden_size, 0)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
-        self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
+        self.recurrent_layers = clones(self.rnn_layer, self.num_layers-2)
         self.recurrent_layers.insert(0, self.input_layer)
+        self.recurrent_layers.append(self.last_rnn_layer)
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
-        for layer in self.recurrent_layers:
-            layer.init_weights_uniform()
 
     def init_hidden(self):
         # initialize the hidden states to zero
@@ -189,12 +191,14 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
         C = self.embeddings(inputs)
         C = C.view(self.seq_len, -1, self.emb_size)
-        h = hidden
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
+            hiddentmp = []
             for layer in range(self.num_layers):
-                hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
-                x = hidden[layer].clone()  # h_
+                temp = self.recurrent_layers[layer](x, hidden[layer])
+                hiddentmp.append(temp)
+                x = temp  #
+            hidden = torch.stack(hiddentmp)
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
