@@ -68,9 +68,9 @@ class RNNLayer(nn.Module):
 
 
 class FullyConnectedLayer(nn.Module):
-    def __init__(self, hidden_size, emb_size, p):
+    def __init__(self, in_dim, out_dim, p):
         super(FullyConnectedLayer, self).__init__()
-        self.fc = nn.Linear(hidden_size, emb_size)
+        self.fc = nn.Linear(in_dim, out_dim)
         self.dropout = nn.Dropout(p)
 
     def init_weights_uniform(self):
@@ -137,7 +137,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.num_layers = num_layers
         self.p = 1 - dp_keep_prob
 
-        self.embeddings = nn.Embedding(vocab_size, emb_size)
+        self.embeddings = nn.Embedding(self.vocab_size, self.emb_size)
 
         self.fully_connected_layer = FullyConnectedLayer(hidden_size, hidden_size, self.p)
         self.input_layer = RNNLayer(emb_size, hidden_size)
@@ -154,7 +154,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
-
+        # nn.init.uniform_(self.embeddings.weight, a=-0.1, b=0.1)
         for layer in self.recurrent_layers:
             layer.init_weights_uniform()
 
