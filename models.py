@@ -63,8 +63,8 @@ class RNNLayer(nn.Module):
         nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
-        x = self.linear1(x)
         x = self.dropout(x)
+        x = self.linear1(x)
         h = self.linear2(h)
         out = x + h  # W_x dot x + W_h dot h
         out = self.tanh(out)
