@@ -121,7 +121,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.batch_size = batch_size
         self.vocab_size = vocab_size
         self.num_layers = num_layers
-        self.p = dp_keep_prob
+        self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
         self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
@@ -246,7 +246,6 @@ class Gate(nn.Module):
         self.dropout = nn.Dropout(p=self.p)
 
     def init_weights_uniform(self):
-        # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         nn.init.uniform_(self.linear1.weight, a=-0.1, b=0.1)  # W_x
@@ -273,7 +272,6 @@ class GRULayer(nn.Module):
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
-        # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.r_gate.init_weights_uniform()
