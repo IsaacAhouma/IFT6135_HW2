@@ -43,13 +43,13 @@ def clones(module, N):
 
 
 class RNNLayer(nn.Module):
-    def __init__(self, in_dim, out_dim, dp_keep_prob):
+    def __init__(self, in_dim, out_dim, p):
         super(RNNLayer, self).__init__()
         self.tanh = nn.Tanh()
 
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.p = 1 - dp_keep_prob
+        self.p = 1
         self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         self.dropout = nn.Dropout(p=self.p)
