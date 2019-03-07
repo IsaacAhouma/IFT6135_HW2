@@ -197,7 +197,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
             for layer in range(self.num_layers):
                 hidden[layer] = self.recurrent_layers[layer](x, hidden[layer].clone())
                 x = hidden[layer].clone()  # h_
-                x = self.recurrent_layers[layer].dropout(x)
+                x = nn.Dropout(self.p)(x)
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
 
