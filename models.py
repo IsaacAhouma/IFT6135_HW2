@@ -49,7 +49,7 @@ class RNNLayer(nn.Module):
 
         self.in_dim = in_dim
         self.out_dim = out_dim
-        self.p = 1
+        self.p = p
         self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         self.dropout = nn.Dropout(p=self.p)
