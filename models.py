@@ -68,9 +68,9 @@ class RNNLayer(nn.Module):
 
 
 class FullyConnectedLayer(nn.Module):
-    def __init__(self, hidden_size, emb_size, p):
+    def __init__(self, in_dim, out_dim, p):
         super(FullyConnectedLayer, self).__init__()
-        self.fc = nn.Linear(hidden_size, emb_size)
+        self.fc = nn.Linear(in_dim, out_dim)
         self.dropout = nn.Dropout(p)
 
     def init_weights_uniform(self):
