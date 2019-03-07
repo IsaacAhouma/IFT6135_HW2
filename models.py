@@ -124,8 +124,8 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
-        self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
+        self.input_layer = RNNLayer(emb_size, hidden_size, dp_keep_prob)
+        self.rnn_layer = RNNLayer(hidden_size, hidden_size, dp_keep_prob)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
         self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
@@ -190,7 +190,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         """
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size], device=inputs.device)
         # C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
-        C = self.embeddings(inputs.transpose(0, 1))
+        C = self.embeddings(inputs)
         C = C.view(self.seq_len, -1, self.emb_size)
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
