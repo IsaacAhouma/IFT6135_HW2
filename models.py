@@ -354,7 +354,6 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
             samples[i] = input
 
         return samples
-        # return samples
 
 
 # Problem 3
