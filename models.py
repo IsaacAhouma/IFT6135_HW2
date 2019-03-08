@@ -43,25 +43,25 @@ def clones(module, N):
 
 
 class RNNLayer(nn.Module):
-    def __init__(self, in_dim, out_dim, p):
+    def __init__(self, input_dim, hidden_dim, p):
         super(RNNLayer, self).__init__()
 
         self.tanh = nn.Tanh()
-        self.in_dim = in_dim
-        self.out_dim = out_dim
+        self.input_dim = input_dim
+        self.hidden_dim = hidden_dim
         self.p = p
-        self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
-        self.linear2 = nn.Linear(self.out_dim, self.out_dim)
+        self.linear1 = nn.Linear(self.input_dim, self.hidden_dim, bias=False)
+        self.linear2 = nn.Linear(self.input_dim, self.hidden_dim)
         self.dropout = nn.Dropout(p=self.p)
-        self.k = np.sqrt(1 / out_dim)
-        # self.init_weights_uniform()
+        self.k = np.sqrt(1 / hidden_dim)
+        self.init_weights_uniform()
 
-    # def init_weights_uniform(self):
-    #     # Initialize all the weights uniformly in the range [-0.1, 0.1]
-    #     # and all the biases to 0 (in place)
-    #     nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
-    #     nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
-    #     nn.init.zeros_(self.linear2.bias)  # b_h
+    def init_weights_uniform(self):
+        # Initialize all the weights uniformly in the range [-0.1, 0.1]
+        # and all the biases to 0 (in place)
+        nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
+        nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
+        nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
         x = self.dropout(x)
@@ -237,27 +237,28 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
 
 class Gate(nn.Module):
-    def __init__(self, dim1, dim2, p, activation_function='tanh'):
+    def __init__(self, input_dim, hidden_dim, p, activation_function='tanh'):
         super(Gate, self).__init__()
+        assert(activation_function in ['sigmoid', 'tanh'])
         if activation_function == 'sigmoid':
             self.activation = nn.Sigmoid()
-        else:
+        elif activation_function == 'tanh':
             self.activation = nn.Tanh()
 
         self.p = p
-        self.linear1 = nn.Linear(dim1, dim2, bias=False)
-        self.linear2 = nn.Linear(dim2, dim2)
+        self.linear1 = nn.Linear(input_dim, hidden_dim, bias=False)
+        self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.dropout = nn.Dropout(p=self.p)
-        self.k = np.sqrt(1 / dim2)
+        self.k = np.sqrt(1 / hidden_dim)
 
-        # self.init_weights_uniform()
+        self.init_weights_uniform()
 
-    # def init_weights_uniform(self):
-    #     # Initialize all the weights uniformly in the range [-0.1, 0.1]
-    #     # and all the biases to 0 (in place)
-    #     nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
-    #     nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
-    #     nn.init.zeros_(self.linear2.bias)  # b_h
+    def init_weights_uniform(self):
+        # Initialize all the weights uniformly in the range [-0.1, 0.1]
+        # and all the biases to 0 (in place)
+        nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
+        nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
+        nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
         x = self.dropout(x)
@@ -269,20 +270,23 @@ class Gate(nn.Module):
 
 
 class GRULayer(nn.Module):
-    def __init__(self, dim1, dim2, p, activation_function='tanh'):
+    def __init__(self, input_dim, hidden_dim, p):
         super(GRULayer, self).__init__()
 
         self.p = p
         self.dropout = nn.Dropout(p=self.p)
-        self.r_gate = Gate(dim1, dim2, p, activation_function='sigmoid')
-        self.z_gate = Gate(dim1, dim2, p, activation_function='sigmoid')
-        self.h_gate = Gate(dim1, dim2, p, activation_function='tanh')
+        self.r_gate = Gate(input_dim, hidden_dim, p, activation_function='sigmoid')
+        self.z_gate = Gate(input_dim, hidden_dim, p, activation_function='sigmoid')
+        self.h_gate = Gate(input_dim, hidden_dim, p, activation_function='tanh')
 
     def forward(self, x, h):
         x = self.dropout(x)
         r = self.r_gate(x, h)
         z = self.z_gate(x, h)
+        assert(r.shape == h.shape)
+        assert (z.shape == h.shape)
         h_t = self.h_gate(x, r*h)
+        assert (h_t.shape == h.shape)
         h = (1-z)*h + z*h_t
         return h
 
@@ -308,7 +312,7 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
 
         self.input_layer = GRULayer(emb_size, hidden_size, p=self.p)
         self.gru_layer = GRULayer(hidden_size, hidden_size, p=self.p)
-        self.output_layer = LinearLayer(self.hidden_size, self.vocab_size, self.p)
+        self.output_layer = LinearLayer(self.hidden_size, self.vocab_size, p=self.p)
 
         self.gru_layers = clones(self.gru_layer, self.num_layers-1)
         self.gru_layers.insert(0, self.input_layer)
