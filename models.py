@@ -54,14 +54,14 @@ class RNNLayer(nn.Module):
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         self.dropout = nn.Dropout(p=self.p)
         self.k = np.sqrt(1 / out_dim)
-        self.init_weights_uniform()
+        # self.init_weights_uniform()
 
-    def init_weights_uniform(self):
-        # Initialize all the weights uniformly in the range [-0.1, 0.1]
-        # and all the biases to 0 (in place)
-        nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
-        nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
-        nn.init.zeros_(self.linear2.bias)  # b_h
+    # def init_weights_uniform(self):
+    #     # Initialize all the weights uniformly in the range [-0.1, 0.1]
+    #     # and all the biases to 0 (in place)
+    #     nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
+    #     nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
+    #     nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
         x = self.dropout(x)
@@ -250,14 +250,14 @@ class Gate(nn.Module):
         self.dropout = nn.Dropout(p=self.p)
         self.k = np.sqrt(1 / dim2)
 
-        self.init_weights_uniform()
+        # self.init_weights_uniform()
 
-    def init_weights_uniform(self):
-        # Initialize all the weights uniformly in the range [-0.1, 0.1]
-        # and all the biases to 0 (in place)
-        nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
-        nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
-        nn.init.zeros_(self.linear2.bias)  # b_h
+    # def init_weights_uniform(self):
+    #     # Initialize all the weights uniformly in the range [-0.1, 0.1]
+    #     # and all the biases to 0 (in place)
+    #     nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
+    #     nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
+    #     nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
         x = self.dropout(x)
@@ -329,7 +329,6 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
 
     def forward(self, inputs, hidden):
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size], device=inputs.device)
-        # C = self.embeddings(inputs.view(self.batch_size, self.seq_len))
         C = self.embeddings(inputs)
         C = C.view(self.seq_len, -1, self.emb_size)
         for t in range(self.seq_len):
