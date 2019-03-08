@@ -61,7 +61,7 @@ class RNNLayer(nn.Module):
         # and all the biases to 0 (in place)
         nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
         nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
-        nn.init.zeros_(self.linear2.bias)  # b_h
+        nn.init.uniform_(self.linear2.bias, a=-self.k, b=self.k)  # b_h
 
     def forward(self, x, h):
         x = self.dropout(x)
@@ -258,7 +258,7 @@ class Gate(nn.Module):
         # and all the biases to 0 (in place)
         nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
         nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
-        nn.init.zeros_(self.linear2.bias)  # b_h
+        nn.init.uniform_(self.linear2.bias, a=-self.k, b=self.k)  # W_h
 
     def forward(self, x, h):
         x = self.dropout(x)
