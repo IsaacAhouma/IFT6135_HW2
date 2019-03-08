@@ -53,8 +53,8 @@ class RNNLayer(nn.Module):
         self.linear1 = nn.Linear(self.in_dim, self.out_dim, bias=False)
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         self.dropout = nn.Dropout(p=self.p)
-        self.init_weights_uniform()
         self.k = np.sqrt(1 / out_dim)
+        self.init_weights_uniform()
 
     def init_weights_uniform(self):
         # TODO ========================
@@ -141,7 +141,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
-        nn.init.uniform_(self.embeddings, a=-0.1, b=0.1)
+        nn.init.uniform_(self.embeddings.weight, a=-0.1, b=0.1)
 
     def init_hidden(self):
         # initialize the hidden states to zero
@@ -273,9 +273,10 @@ class GRULayer(nn.Module):
         super(GRULayer, self).__init__()
 
         self.p = p
-        self.r_gate = Gate(dim1, dim2, activation_function='sigmoid')
-        self.z_gate = Gate(dim1, dim2, activation_function='sigmoid')
-        self.h_gate = Gate(dim1, dim2, activation_function='tanh')
+        self.dropout = nn.Dropout(p=self.p)
+        self.r_gate = Gate(dim1, dim2, p, activation_function='sigmoid')
+        self.z_gate = Gate(dim1, dim2, p, activation_function='sigmoid')
+        self.h_gate = Gate(dim1, dim2, p, activation_function='tanh')
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
@@ -313,9 +314,9 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
         self.p = 1 - dp_keep_prob
         self.embeddings = nn.Embedding(vocab_size, emb_size)
 
-        self.input_layer = GRULayer(emb_size, hidden_size, dp_keep_prob)
+        self.input_layer = GRULayer(emb_size, hidden_size, p=self.p)
         self.input_layer.init_weights_uniform()
-        self.gru_layer = GRULayer(hidden_size, hidden_size, dp_keep_prob)
+        self.gru_layer = GRULayer(hidden_size, hidden_size, p=self.p)
         self.gru_layer.init_weights_uniform()
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
@@ -326,7 +327,7 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
     def init_weights_uniform(self):
         # TODO ========================
         self.output_layer.init_weights_uniform()
-        nn.init.uniform_(self.embeddings, a=-0.1, b=0.1)
+        nn.init.uniform_(self.embeddings.weight, a=-0.1, b=0.1)
 
     def init_hidden(self):
         # initialize the hidden states to zero
