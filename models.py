@@ -54,13 +54,14 @@ class RNNLayer(nn.Module):
         self.linear2 = nn.Linear(self.out_dim, self.out_dim)
         self.dropout = nn.Dropout(p=self.p)
         self.init_weights_uniform()
+        self.k = np.sqrt(1 / out_dim)
 
     def init_weights_uniform(self):
         # TODO ========================
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        nn.init.uniform_(self.linear1.weight, a=-0.1, b=0.1)  # W_x
-        nn.init.uniform_(self.linear2.weight, a=-0.1, b=0.1)  # W_h
+        nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
+        nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
         nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
@@ -128,18 +129,19 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
-        self.last_rnn_layer = RNNLayer(hidden_size, hidden_size, 0)
+        # self.last_rnn_layer = RNNLayer(hidden_size, hidden_size, 0)
         self.output_layer = LinearLayer(self.hidden_size, self.vocab_size)
 
-        self.recurrent_layers = clones(self.rnn_layer, self.num_layers-2)
+        self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
         self.recurrent_layers.insert(0, self.input_layer)
-        self.recurrent_layers.append(self.last_rnn_layer)
+        # self.recurrent_layers.append(self.last_rnn_layer)
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
         self.output_layer.init_weights_uniform()
+        nn.init.uniform_(self.embeddings, a=-0.1, b=0.1)
 
     def init_hidden(self):
         # initialize the hidden states to zero
@@ -248,12 +250,13 @@ class Gate(nn.Module):
         self.linear1 = nn.Linear(dim1, dim2, bias=False)
         self.linear2 = nn.Linear(dim2, dim2)
         self.dropout = nn.Dropout(p=self.p)
+        self.k = np.sqrt(1 / dim2)
 
     def init_weights_uniform(self):
         # Initialize all the weights uniformly in the range [-0.1, 0.1]
         # and all the biases to 0 (in place)
-        nn.init.uniform_(self.linear1.weight, a=-0.1, b=0.1)  # W_x
-        nn.init.uniform_(self.linear2.weight, a=-0.1, b=0.1)  # W_h
+        nn.init.uniform_(self.linear1.weight, a=-self.k, b=self.k)  # W_x
+        nn.init.uniform_(self.linear2.weight, a=-self.k, b=self.k)  # W_h
         nn.init.zeros_(self.linear2.bias)  # b_h
 
     def forward(self, x, h):
@@ -323,6 +326,7 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
     def init_weights_uniform(self):
         # TODO ========================
         self.output_layer.init_weights_uniform()
+        nn.init.uniform_(self.embeddings, a=-0.1, b=0.1)
 
     def init_hidden(self):
         # initialize the hidden states to zero
