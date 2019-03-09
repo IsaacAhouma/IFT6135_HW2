@@ -250,7 +250,6 @@ class Gate(nn.Module):
         self.linear2 = nn.Linear(hidden_dim, hidden_dim)
         self.dropout = nn.Dropout(p=self.p)
         self.k = np.sqrt(1 / hidden_dim)
-
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
