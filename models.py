@@ -51,7 +51,7 @@ class RNNLayer(nn.Module):
         self.hidden_dim = hidden_dim
         self.p = p
         self.linear1 = nn.Linear(self.input_dim, self.hidden_dim, bias=False)
-        self.linear2 = nn.Linear(self.input_dim, self.hidden_dim)
+        self.linear2 = nn.Linear(self.hidden_dim, self.hidden_dim)
         self.dropout = nn.Dropout(p=self.p)
         self.k = np.sqrt(1 / hidden_dim)
         self.init_weights_uniform()
