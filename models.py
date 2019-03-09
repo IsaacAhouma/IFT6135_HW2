@@ -279,14 +279,13 @@ class GRULayer(nn.Module):
         self.h_gate = Gate(input_dim, hidden_dim, p, activation_function='tanh')
 
     def forward(self, x, h):
-        x = self.dropout(x)
         r = self.r_gate(x, h)
         z = self.z_gate(x, h)
         assert(r.shape == h.shape)
         assert (z.shape == h.shape)
-        h_t = self.h_gate(x, r*h)
+        h_t = self.h_gate(x, torch.mul(r, h))
         assert (h_t.shape == h.shape)
-        h = (1-z)*h + z*h_t
+        h = torch.mul(1-z, h) + torch.mul(z, h_t)
         return h
 
 
