@@ -49,32 +49,32 @@
 #      perplexities:
 #                  RNN: train:  120  val: 157
 #                  GRU: train:   65  val: 104
-#          TRANSFORMER:  train:  77  val: 152
-#    - For Problem 4.2 (exploration of optimizers), you will make use of the 
+#          TRANSFORMER:  train:  67  val: 146
+#    - For Problem 4.2 (exploration of optimizers), you will make use of the
 #      experiments from 4.1, and should additionally run the following experiments:
-#          --model=RNN --optimizer=SGD --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35 
+#          --model=RNN --optimizer=SGD --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=GRU --optimizer=SGD --initial_lr=10 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=TRANSFORMER --optimizer=SGD --initial_lr=20 --batch_size=128 --seq_len=35 --hidden_size=512 --num_layers=6 --dp_keep_prob=.9
 #          --model=RNN --optimizer=SGD_LR_SCHEDULE --initial_lr=1 --batch_size=20 --seq_len=35 --hidden_size=512 --num_layers=2 --dp_keep_prob=0.35
 #          --model=GRU --optimizer=ADAM --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35
 #          --model=TRANSFORMER --optimizer=ADAM --initial_lr=0.001 --batch_size=128 --seq_len=35 --hidden_size=512 --num_layers=2 --dp_keep_prob=.9
-#    - For Problem 4.3 (exloration of hyperparameters), do your best to get 
-#      better validation perplexities than the settings given for 4.1. You may 
-#      try any combination of the hyperparameters included as arguments in this 
-#      script's ArgumentParser, but do not implement any additional 
-#      regularizers/features. You may (and will probably want to) run a lot of 
-#      different things for just 1-5 epochs when you are trying things out, but 
+#    - For Problem 4.3 (exloration of hyperparameters), do your best to get
+#      better validation perplexities than the settings given for 4.1. You may
+#      try any combination of the hyperparameters included as arguments in this
+#      script's ArgumentParser, but do not implement any additional
+#      regularizers/features. You may (and will probably want to) run a lot of
+#      different things for just 1-5 epochs when you are trying things out, but
 #      you must report at least 3 experiments on each architecture that have run
 #      for at least 40 epochs.
-#    - For Problem 5, perform all computations / plots based on saved models 
-#      from Problem 4.1. NOTE this means you don't have to save the models for 
+#    - For Problem 5, perform all computations / plots based on saved models
+#      from Problem 4.1. NOTE this means you don't have to save the models for
 #      your exploration, which can make things go faster. (Of course
-#      you can still save them if you like; just add the flag --save_best). 
-#    - For Problem 5.1, you can modify the loss computation in this script 
-#      (search for "LOSS COMPUTATION" to find the appropriate line. Remember to 
+#      you can still save them if you like; just add the flag --save_best).
+#    - For Problem 5.1, you can modify the loss computation in this script
+#      (search for "LOSS COMPUTATION" to find the appropriate line. Remember to
 #      submit your code.
-#    - For Problem 5.3, you must implement the generate method of the RNN and 
-#      GRU.  Implementing this method is not considered part of problems 1/2 
+#    - For Problem 5.3, you must implement the generate method of the RNN and
+#      GRU.  Implementing this method is not considered part of problems 1/2
 #      respectively, and will be graded as part of Problem 5.3
 
 
@@ -106,7 +106,8 @@ parser = argparse.ArgumentParser(description='PyTorch Penn Treebank Language Mod
 
 # Arguments you may need to set to run different experiments in 4.1 & 4.2.
 parser.add_argument('--data', type=str, default='data',
-                    help='location of the data corpus')
+                    help='location of the data corpus. We suggest you change the default\
+                    here, rather than passing as an argument, to avoid long file paths.')
 parser.add_argument('--model', type=str, default='GRU',
                     help='type of recurrent net (RNN, GRU, TRANSFORMER)')
 parser.add_argument('--optimizer', type=str, default='SGD_LR_SCHEDULE',
@@ -123,7 +124,7 @@ parser.add_argument('--hidden_size', type=int, default=200,
 parser.add_argument('--save_best', action='store_true',
                     help='save the model for the best validation performance')
 parser.add_argument('--num_layers', type=int, default=2,
-                    help='number of LSTM layers')
+                    help='number of hidden layers in RNN/GRU, or number of transformer blocks in TRANSFORMER')
 
 # Other hyperparameters you may want to tune in your exploration
 parser.add_argument('--emb_size', type=int, default=200,
@@ -159,7 +160,7 @@ argsdict['code_file'] = sys.argv[0]
 # Use the model, optimizer, and the flags passed to the script to make the
 # name for the experimental dir
 print("\n########## Setting Up Experiment ######################")
-flags = [flag.lstrip('--') for flag in sys.argv[1:]]
+flags = [flag.lstrip('--').replace('/', '').replace('\\', '') for flag in sys.argv[1:]]
 experiment_path = os.path.join(args.save_dir + '_'.join([argsdict['model'],
                                                          argsdict['optimizer']]
                                                         + flags))
@@ -192,10 +193,12 @@ else:
       of memory. \n You can try setting batch_size=1 to reduce memory usage")
     device = torch.device("cpu")
 
-
 ###############################################################################
 #
-# DATA LOADING & PROCESSING
+#
+LOADING & PROCESSING
+
+
 #
 ###############################################################################
 
@@ -260,7 +263,7 @@ def ptb_iterator(raw_data, batch_size, num_steps):
 class Batch:
     "Data processing for the transformer. This class adds a mask to the data."
 
-    def __init__(self, x, pad=0):
+    def __init__(self, x, pad=-1):
         self.data = x
         self.mask = self.make_mask(self.data, pad)
 
@@ -352,7 +355,7 @@ def repackage_hidden(h):
     sequences when we use the final hidden states from one mini-batch as the
     initial hidden states for the next mini-batch.
 
-    Using the final hidden states in this way makes sense when the elements of 
+    Using the final hidden states in this way makes sense when the elements of
     the mini-batches are actually successive subsequences in a set of longer sequences.
     This is the case with the way we've processed the Penn Treebank dataset.
     """
@@ -396,9 +399,9 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
 
         # LOSS COMPUTATION
-        # This line currently averages across all the sequences in a mini-batch 
+        # This line currently averages across all the sequences in a mini-batch
         # and all time-steps of the sequences.
-        # For problem 5.3, you will (instead) need to compute the average loss 
+        # For problem 5.3, you will (instead) need to compute the average loss
         # at each time-step separately.
         loss = loss_fn(outputs.contiguous().view(-1, model.vocab_size), tt)
         costs += loss.data.item() * model.seq_len
@@ -406,7 +409,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         iters += model.seq_len
         if args.debug:
             print(step, loss)
-        if is_train:  # Only update parameters if training 
+        if is_train:  # Only update parameters if training
             loss.backward()
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
             if args.optimizer == 'ADAM':
@@ -417,7 +420,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
                         p.data.add_(-lr, p.grad.data)
             if step % (epoch_size // 10) == 10:
                 print('step: ' + str(step) + '\t' \
-                      + 'loss: ' + str(costs) + '\t' \
+                      + "loss (sum over all examples' seen this epoch):" + str(costs) + '\t' \
                       + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
     return np.exp(costs / iters), losses
 
@@ -464,10 +467,10 @@ for epoch in range(num_epochs):
             torch.save(model.state_dict(), os.path.join(args.save_dir, 'best_params.pt'))
         # NOTE ==============================================
         # You will need to load these parameters into the same model
-        # for a couple Problems: so that you can compute the gradient 
+        # for a couple Problems: so that you can compute the gradient
         # of the loss w.r.t. hidden state as required in Problem 5.2
         # and to sample from the the model as required in Problem 5.3
-        # We are not asking you to run on the test data, but if you 
+        # We are not asking you to run on the test data, but if you
         # want to look at test performance you would load the saved
         # model and run on the test data with batch_size=1
 
