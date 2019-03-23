@@ -442,8 +442,8 @@ class MultiHeadedAttention(nn.Module):
         self.w_query = clones(LinearLayer(self.n_units, self.d_k), n_heads)
         self.w_key = clones(LinearLayer(self.n_units, self.d_k), n_heads)
         self.w_value = clones(LinearLayer(self.n_units, self.d_k), n_heads)
+        self.dropout = clones(nn.Dropout(dropout), n_heads)
         self.output_embedding = LinearLayer(self.n_units, self.n_units)
-        self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
@@ -455,12 +455,12 @@ class MultiHeadedAttention(nn.Module):
         # Also apply dropout to the attention values.
 
         results = []
-        for w_query, w_key, w_value in zip(self.w_query, self.w_key, self.w_value):
-            results.append(self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask))
+        for w_query, w_key, w_value, dropout in zip(self.w_query, self.w_key, self.w_value, self.dropout):
+            results.append(self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, dropout, mask))
         multihead = self.output_embedding(torch.cat(results, -1))
-        return self.dropout(multihead)  # size: (batch_size, seq_len, self.n_units)
+        return multihead  # size: (batch_size, seq_len, self.n_units)
 
-    def scaled_dot_product_attention(self, query, key, value, w_query, w_key, w_value, mask):
+    def scaled_dot_product_attention(self, query, key, value, w_query, w_key, w_value, dropout, mask):
         # Apply weight matrices to inputs
         query = w_query(query)
         key = w_key(key)
@@ -471,8 +471,11 @@ class MultiHeadedAttention(nn.Module):
         scaled_dot_product = dot_product / math.sqrt(self.d_k)
 
         # Mask output and apply softmax
-        masked = torch.mul(scaled_dot_product, mask.float()) - 10**9 * (torch.ones_like(mask.float()) - mask.float())
-        softmax = F.softmax(masked, 1, _stacklevel=5)
+        masked = torch.mul(scaled_dot_product, mask.float()) - 10**9 * (torch.ones_like(mask).float() - mask.float())
+        softmax = F.softmax(masked, 2)
+
+        # Apply dropout to attention
+        softmax = dropout(softmax)
 
         # Apply weights to values
         output = torch.bmm(softmax, value)
