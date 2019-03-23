@@ -420,11 +420,11 @@ class MultiHeadedAttention(nn.Module):
     def __init__(self, n_heads, n_units, dropout=0.1):
         """
         n_heads: the number of attention heads
-        n_units: the number of output units
+        n_units: the number of input and output units
         dropout: probability of DROPPING units
         """
         super(MultiHeadedAttention, self).__init__()
-        # This sets the size of the keys, values, and queries (self.d_k) to all 
+        # This sets the size of the keys, values, and queries (self.d_k) to all
         # be equal to the number of output units divided by the number of heads.
         self.d_k = n_units // n_heads
         # This requires the number of n_heads to evenly divide n_units.
@@ -432,18 +432,67 @@ class MultiHeadedAttention(nn.Module):
         self.n_units = n_units
 
         # TODO: create/initialize any necessary parameters or layers
-        # Note: the only Pytorch modules you are allowed to use are nn.Linear 
+        # Initialize all weights and biases uniformly in the range [-k, k],
+        # where k is the square root of 1/n_units.
+        # Note: the only Pytorch modules you are allowed to use are nn.Linear
         # and nn.Dropout
+        # ETA: you can also use softmax
+        # ETA: you can use the "clones" function we provide.
+
+        self.w_query = clones(LinearBlock(n_units, self.d_k), n_heads)
+        self.w_key = clones(LinearBlock(n_units, self.d_k), n_heads)
+        self.w_value = clones(LinearBlock(n_units, self.d_k), n_heads)
+        self.output_embedding = nn.Linear(self.n_units, self.n_units)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
-        # query, key, and value all have size: (batch_size, seq_len, self.n_units, self.d_k)
+        # query, key, and value correspond to Q, K, and V in the latex, and
+        # they all have size: (batch_size, seq_len, self.n_units)
         # mask has size: (batch_size, seq_len, seq_len)
-        # As described in the .tex, apply input masking to the softmax 
+        # As described in the .tex, apply input masking to the softmax
         # generating the "attention values" (i.e. A_i in the .tex)
         # Also apply dropout to the attention values.
 
-        return  # size: (batch_size, seq_len, self.n_units)
+        results = []
+        for w_query, w_key, w_value in zip(self.w_query, self.w_key, self.w_value):
+            results.append(self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask))
+        multihead = self.output_embedding(torch.cat(results, -1))
+        return self.dropout(multihead)  # size: (batch_size, seq_len, self.n_units)
+
+    def scaled_dot_product_attention(self, query, key, value, w_query, w_key, w_value, mask):
+        # Apply weight matrices to inputs
+        query = w_query(query)
+        key = w_key(key)
+        value = w_value(value)
+
+        # Calculate and scale dot product
+        dot_product = torch.bmm(query, torch.transpose(key, -2, -1))
+        scaled_dot_product = dot_product / math.sqrt(self.d_k)
+
+        # Mask output and apply softmax
+        masked = torch.mul(scaled_dot_product, mask.float()) - 10**9 * (torch.ones_like(mask.float()) - mask.float())
+        softmax = F.softmax(masked, 1, _stacklevel=5)
+
+        # Apply weights to values
+        output = torch.bmm(softmax, value)
+
+        return output
+
+
+class LinearBlock(nn.Module):
+    def __init__(self, in_size, out_size, hidden=2048):
+        super(LinearBlock, self).__init__()
+        self.block = nn.Sequential(
+            nn.Linear(in_size, hidden),
+            nn.ReLU(),
+            nn.Linear(hidden, out_size)
+        )
+
+    def forward(self, x):
+        x = self.block(x)
+
+        return x
 
 
 # ----------------------------------------------------------------------------------

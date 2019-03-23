@@ -1,2 +1,12 @@
-'data/'
-'__pycache__/'
+# Ignore
+data/
+__pycache__/
+.idea
+
+# Keep text files
+!data/ptb.char.test.txt
+!data/ptb.char.train.txt
+!data/ptb.char.valid.txt
+!data/ptb.test.txt
+!data/ptb.train.txt
+!data/ptb.valid.txt
