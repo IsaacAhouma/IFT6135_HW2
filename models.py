@@ -459,7 +459,7 @@ class MultiHeadedAttention(nn.Module):
         for w_query, w_key, w_value in zip(self.w_query, self.w_key, self.w_value):
             attention = self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask)
             # attention = self.dropout(attention)
-            # results.append(attention)
+            results.append(attention)
         multihead = self.output_embedding(torch.cat(results, -1))
         return multihead  # size: (batch_size, seq_len, self.n_units)
 
