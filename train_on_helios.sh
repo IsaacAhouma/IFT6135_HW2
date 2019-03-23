@@ -9,7 +9,6 @@ s_exec python 'ptb-lm.py' --model=RNN --optimizer=SGD --initial_lr=0.0001 --batc
 
 # echo "Copying files to local hard drive..."
 # cp -r $TMP_RESULTS_DIR $ROOT_DIR
-
 # echo "Cleaning up data and results..."
 # rm -r $TMP_DATA_DIR
 # rm -r $TMP_RESULTS_DIR
