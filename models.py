@@ -442,9 +442,9 @@ class AttentionHead(nn.Module):
 
         # Calculate and scale dot product
         x = torch.bmm(q, k.transpose(1, 2)) / np.sqrt(self.d_k)
-        x_masked = x*s - (10 ** 9)*(1 - s)
 
         # Mask output and apply softmax
+        x_masked = x * s - 1e9 * (1 - s)
         a = F.softmax(x_masked, dim=-1)
         a = self.dropout(a)
 
