@@ -460,9 +460,11 @@ class MultiHeadedAttention(nn.Module):
 
         results = []
         for w_query, w_key, w_value in zip(self.w_query, self.w_key, self.w_value):
-            results.append(self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask))
+            attention = self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask)
+            attention = self.dropout(attention)
+            results.append(attention)
         multihead = self.output_embedding(torch.cat(results, -1))
-        return self.dropout(multihead)  # size: (batch_size, seq_len, self.n_units)
+        return multihead  # size: (batch_size, seq_len, self.n_units)
 
     def scaled_dot_product_attention(self, query, key, value, w_query, w_key, w_value, mask):
         # Apply weight matrices to inputs
