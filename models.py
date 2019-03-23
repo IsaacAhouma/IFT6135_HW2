@@ -483,16 +483,24 @@ class MultiHeadedAttention(nn.Module):
 class LinearBlock(nn.Module):
     def __init__(self, in_size, out_size, hidden=2048):
         super(LinearBlock, self).__init__()
+        self.n_units = in_size
         self.block = nn.Sequential(
             nn.Linear(in_size, hidden),
             nn.ReLU(),
             nn.Linear(hidden, out_size)
         )
+        self.block.apply(self.weights_init)
 
     def forward(self, x):
         x = self.block(x)
 
         return x
+
+    def weights_init(self, layer):
+        if isinstance(layer, nn.Linear):
+            k = math.sqrt(1 / self.n_units)
+            torch.nn.init.uniform_(layer.weight.data, a=-k, b=k)
+            torch.nn.init.uniform_(layer.bias.data, a=-k, b=k)
 
 
 # ----------------------------------------------------------------------------------
