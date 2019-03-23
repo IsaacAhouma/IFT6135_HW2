@@ -430,7 +430,6 @@ class MultiHeadedAttention(nn.Module):
         # This requires the number of n_heads to evenly divide n_units.
         assert n_units % n_heads == 0
         self.n_units = n_units
-        self.k = np.sqrt(1 / n_units)
 
         # TODO: create/initialize any necessary parameters or layers
         # Initialize all weights and biases uniformly in the range [-k, k],
@@ -444,9 +443,6 @@ class MultiHeadedAttention(nn.Module):
         self.w_key = clones(LinearBlock(n_units, self.d_k), n_heads)
         self.w_value = clones(LinearBlock(n_units, self.d_k), n_heads)
         self.output_embedding = nn.Linear(self.n_units, self.n_units)
-        nn.init.uniform_(self.output_embedding.weight, -self.k, self.k)
-        nn.init.uniform_(self.output_embedding.bias, -self.k, self.k)
-
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, mask=None):
@@ -487,26 +483,24 @@ class MultiHeadedAttention(nn.Module):
 class LinearBlock(nn.Module):
     def __init__(self, in_size, out_size, hidden=2048):
         super(LinearBlock, self).__init__()
-        self.layer1 = nn.Linear(in_size, hidden)
-        self.layer2 = nn.Linear(hidden, out_size)
-        self.k = np.sqrt(1 / out_size)
-        self.init_weights()
+        self.n_units = in_size
         self.block = nn.Sequential(
-            self.layer1,
+            nn.Linear(in_size, hidden),
             nn.ReLU(),
-            self.layer2
+            nn.Linear(hidden, out_size)
         )
-
-    def init_weights(self):
-        nn.init.uniform_(self.layer1.weight, -self.k, self.k)
-        nn.init.uniform_(self.layer1.bias, -self.k, self.k)
-        nn.init.uniform_(self.layer2.weight, -self.k, self.k)
-        nn.init.uniform_(self.layer2.bias, -self.k, self.k)
+        self.block.apply(self.weights_init)
 
     def forward(self, x):
         x = self.block(x)
 
         return x
+
+    def weights_init(self, layer):
+        if isinstance(layer, nn.Linear):
+            k = math.sqrt(1 / self.n_units)
+            torch.nn.init.uniform_(layer.weight.data, a=-k, b=k)
+            torch.nn.init.uniform_(layer.bias.data, a=-k, b=k)
 
 
 # ----------------------------------------------------------------------------------
