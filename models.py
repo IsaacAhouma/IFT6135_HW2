@@ -428,12 +428,12 @@ class AttentionHead(nn.Module):
         self.init_weights()
 
     def init_weights(self):
-        nn.init.uniform_(self.w_query.weight, -self.d_k, self.dk)
-        nn.init.uniform_(self.w_query.bias, -self.d_k, self.dk)
-        nn.init.uniform_(self.w_key.weight, -self.d_k, self.dk)
-        nn.init.uniform_(self.w_key.bias, -self.d_k, self.dk)
-        nn.init.uniform_(self.w_value.weight, -self.d_k, self.dk)
-        nn.init.uniform_(self.w_value.bias, -self.d_k, self.dk)
+        nn.init.uniform_(self.w_query.weight, -self.k, self.k)
+        nn.init.uniform_(self.w_query.bias, -self.k, self.k)
+        nn.init.uniform_(self.w_key.weight, -self.k, self.k)
+        nn.init.uniform_(self.w_key.bias, -self.k, self.k)
+        nn.init.uniform_(self.w_value.weight, -self.k, self.k)
+        nn.init.uniform_(self.w_value.bias, -self.k, self.k)
 
     def forward(self, query, key, value, s):
         q = self.w_query(query)
