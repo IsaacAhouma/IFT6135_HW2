@@ -424,7 +424,6 @@ class MultiHeadedAttention(nn.Module):
         dropout: probability of DROPPING units
         """
         super(MultiHeadedAttention, self).__init__()
-        print(dropout)
         # This sets the size of the keys, values, and queries (self.d_k) to all
         # be equal to the number of output units divided by the number of heads.
         self.d_k = n_units // n_heads
@@ -494,18 +493,11 @@ class LinearOutput(nn.Linear):
 
 
 class LinearBlock(nn.Module):
-    def __init__(self, in_size, out_size, hidden=2048, simple=True):
+    def __init__(self, in_size, out_size):
         super(LinearBlock, self).__init__()
         self.n_units = in_size
-        if simple:
-            self.block = nn.Sequential(
+        self.block = nn.Sequential(
                 nn.Linear(in_size, out_size)
-            )
-        else:
-            self.block = nn.Sequential(
-                nn.Linear(in_size, hidden),
-                nn.ReLU(),
-                nn.Linear(hidden, out_size)
             )
         self.block.apply(self.weights_init)
 
