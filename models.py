@@ -415,6 +415,44 @@ and a linear layer followed by a softmax.
 
 # ----------------------------------------------------------------------------------
 
+class AttentionHead(nn.Module):
+    def __init__(self, n_units, d_k, dropout):
+        super(AttentionHead, self).__init__()
+        self.n_units = n_units
+        self.d_k = d_k
+        self.k = np.sqrt(1 / self.n_units)
+        self.dropout = nn.Dropout(dropout)
+        self.w_query = nn.Linear(self.n_units, self.d_k)
+        self.w_key = nn.Linear(self.n_units, self.d_k)
+        self.w_value = nn.Linear(self.n_units, self.d_k)
+        self.init_weights()
+
+    def init_weights(self):
+        nn.init.uniform_(self.w_query.weight, -self.d_k, self.dk)
+        nn.init.uniform_(self.w_query.bias, -self.d_k, self.dk)
+        nn.init.uniform_(self.w_key.weight, -self.d_k, self.dk)
+        nn.init.uniform_(self.w_key.bias, -self.d_k, self.dk)
+        nn.init.uniform_(self.w_value.weight, -self.d_k, self.dk)
+        nn.init.uniform_(self.w_value.bias, -self.d_k, self.dk)
+
+    def forward(self, query, key, value, s):
+        q = self.w_query(query)
+        k = self.w_key(key)
+        v = self.w_value(value)
+
+        # Calculate and scale dot product
+        x = torch.bmm(q, k.transpose(1, 2)) / np.sqrt(self.d_k)
+        x_masked = x*s - (10 ** 9)*(1 - s)
+
+        # Mask output and apply softmax
+        a = F.softmax(x_masked, dim=-1)
+        a = self.dropout(a)
+
+        # Apply weights to values
+        h = torch.bmm(a, v)
+
+        return h
+
 # TODO: implement this class
 class MultiHeadedAttention(nn.Module):
     def __init__(self, n_heads, n_units, dropout=0.1):
@@ -431,6 +469,7 @@ class MultiHeadedAttention(nn.Module):
         assert n_units % n_heads == 0
         self.n_units = n_units
 
+        self.k = np.sqrt(1 / self.n_units)
         # TODO: create/initialize any necessary parameters or layers
         # Initialize all weights and biases uniformly in the range [-k, k],
         # where k is the square root of 1/n_units.
@@ -439,11 +478,14 @@ class MultiHeadedAttention(nn.Module):
         # ETA: you can also use softmax
         # ETA: you can use the "clones" function we provide.
 
-        self.w_query = clones(LinearLayer(self.n_units, self.d_k), n_heads)
-        self.w_key = clones(LinearLayer(self.n_units, self.d_k), n_heads)
-        self.w_value = clones(LinearLayer(self.n_units, self.d_k), n_heads)
-        self.output_embedding = LinearLayer(self.n_units, self.n_units)
-        self.dropout = nn.Dropout(dropout)
+        head = AttentionHead(self.n_units, self.d_k, dropout)
+        self.heads = clones(head, n_heads)
+        self.w_o = nn.Linear(self.n_units, self.n_units)
+        self.init_weights()
+
+    def init_weights(self):
+        nn.init.uniform_(self.w_o.weight, -self.k, self.k)
+        nn.init.uniform_(self.w_o.bias, -self.k, self.k)
 
     def forward(self, query, key, value, mask=None):
         # TODO: implement the masked multi-head attention.
@@ -455,44 +497,11 @@ class MultiHeadedAttention(nn.Module):
         # Also apply dropout to the attention values.
 
         results = []
-        for w_query, w_key, w_value in zip(self.w_query, self.w_key, self.w_value):
-            results.append(self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask))
-        multihead = self.output_embedding(torch.cat(results, -1))
+        for head in self.heads:
+            h = head(query, key, value, mask)
+            results.append(h)
+        multihead = self.w_o(torch.cat(results, -1))
         return multihead  # size: (batch_size, seq_len, self.n_units)
-
-    def scaled_dot_product_attention(self, query, key, value, w_query, w_key, w_value, mask):
-        # Apply weight matrices to inputs
-        query = w_query(query)
-        key = w_key(key)
-        value = w_value(value)
-
-        # Calculate and scale dot product
-        dot_product = torch.bmm(query, torch.transpose(key, -2, -1))
-        scaled_dot_product = dot_product / math.sqrt(self.d_k)
-
-        # Mask output and apply softmax
-        masked = torch.mul(scaled_dot_product, mask.float()) - 10**9 * (torch.ones_like(mask.float()) - mask.float())
-        softmax = F.softmax(masked, 1, _stacklevel=5)
-        softmax = self.dropout(softmax)
-
-        # Apply weights to values
-        output = torch.bmm(softmax, value)
-
-        return output
-
-
-class LinearLayer(nn.Linear):
-    def __init__(self, in_features, out_features):
-        # self.n_units = in_features
-        self.n_units = out_features
-        super(LinearLayer, self).__init__(in_features, out_features)
-
-    def reset_parameters(self):
-        k = math.sqrt(1 / self.n_units)
-        torch.nn.init.uniform_(self.weight.data, a=-k, b=k)
-        if self.bias is not None:
-            torch.nn.init.uniform_(self.bias.data, a=-k, b=k)
-
 
 # ----------------------------------------------------------------------------------
 # The encodings of elements of the input sequence
