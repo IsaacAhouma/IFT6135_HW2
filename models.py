@@ -439,6 +439,7 @@ class AttentionHead(nn.Module):
         q = self.w_query(query)
         k = self.w_key(key)
         v = self.w_value(value)
+        s = s.float()
 
         # Calculate and scale dot product
         x = torch.bmm(q, k.transpose(1, 2)) / np.sqrt(self.d_k)
