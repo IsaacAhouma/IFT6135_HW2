@@ -458,8 +458,8 @@ class MultiHeadedAttention(nn.Module):
         results = []
         for w_query, w_key, w_value in zip(self.w_query, self.w_key, self.w_value):
             attention = self.scaled_dot_product_attention(query, key, value, w_query, w_key, w_value, mask)
-            attention = self.dropout(attention)
-            results.append(attention)
+            # attention = self.dropout(attention)
+            # results.append(attention)
         multihead = self.output_embedding(torch.cat(results, -1))
         return multihead  # size: (batch_size, seq_len, self.n_units)
 
@@ -476,6 +476,8 @@ class MultiHeadedAttention(nn.Module):
         # Mask output and apply softmax
         masked = torch.mul(scaled_dot_product, mask.float()) - 10**9 * (torch.ones_like(mask.float()) - mask.float())
         softmax = F.softmax(masked, 1, _stacklevel=5)
+        softmax = self.dropout(softmax)
+
 
         # Apply weights to values
         output = torch.bmm(softmax, value)
@@ -485,7 +487,7 @@ class MultiHeadedAttention(nn.Module):
 
 class LinearOutput(nn.Linear):
     def __init__(self, in_features, out_features):
-        self.n_units = in_features
+        self.n_units = out_features
         super(LinearOutput, self).__init__(in_features, out_features)
 
     def reset_parameters(self):
@@ -498,7 +500,7 @@ class LinearOutput(nn.Linear):
 class LinearBlock(nn.Module):
     def __init__(self, in_size, out_size, hidden=2048, simple=True):
         super(LinearBlock, self).__init__()
-        self.n_units = in_size
+        self.n_units = out_size
         if simple:
             self.block = nn.Sequential(
                 nn.Linear(in_size, out_size)
