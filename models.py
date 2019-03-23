@@ -424,7 +424,6 @@ class MultiHeadedAttention(nn.Module):
         dropout: probability of DROPPING units
         """
         super(MultiHeadedAttention, self).__init__()
-        print(dropout)
         # This sets the size of the keys, values, and queries (self.d_k) to all
         # be equal to the number of output units divided by the number of heads.
         self.d_k = n_units // n_heads
@@ -440,10 +439,10 @@ class MultiHeadedAttention(nn.Module):
         # ETA: you can also use softmax
         # ETA: you can use the "clones" function we provide.
 
-        self.w_query = clones(LinearBlock(n_units, self.d_k), n_heads)
-        self.w_key = clones(LinearBlock(n_units, self.d_k), n_heads)
-        self.w_value = clones(LinearBlock(n_units, self.d_k), n_heads)
-        self.output_embedding = LinearOutput(self.n_units, self.n_units)
+        self.w_query = clones(LinearLayer(self.n_units, self.d_k), n_heads)
+        self.w_key = clones(LinearLayer(self.n_units, self.d_k), n_heads)
+        self.w_value = clones(LinearLayer(self.n_units, self.d_k), n_heads)
+        self.output_embedding = LinearLayer(self.n_units, self.n_units)
         self.dropout = nn.Dropout(dropout)
 
     def forward(self, query, key, value, mask=None):
@@ -481,44 +480,16 @@ class MultiHeadedAttention(nn.Module):
         return output
 
 
-class LinearOutput(nn.Linear):
+class LinearLayer(nn.Linear):
     def __init__(self, in_features, out_features):
         self.n_units = in_features
-        super(LinearOutput, self).__init__(in_features, out_features)
+        super(LinearLayer, self).__init__(in_features, out_features)
 
     def reset_parameters(self):
         k = math.sqrt(1 / self.n_units)
         torch.nn.init.uniform_(self.weight.data, a=-k, b=k)
         if self.bias is not None:
             torch.nn.init.uniform_(self.bias.data, a=-k, b=k)
-
-
-class LinearBlock(nn.Module):
-    def __init__(self, in_size, out_size, hidden=2048, simple=True):
-        super(LinearBlock, self).__init__()
-        self.n_units = in_size
-        if simple:
-            self.block = nn.Sequential(
-                nn.Linear(in_size, out_size)
-            )
-        else:
-            self.block = nn.Sequential(
-                nn.Linear(in_size, hidden),
-                nn.ReLU(),
-                nn.Linear(hidden, out_size)
-            )
-        self.block.apply(self.weights_init)
-
-    def forward(self, x):
-        x = self.block(x)
-
-        return x
-
-    def weights_init(self, layer):
-        if isinstance(layer, nn.Linear):
-            k = math.sqrt(1 / self.n_units)
-            torch.nn.init.uniform_(layer.weight.data, a=-k, b=k)
-            torch.nn.init.uniform_(layer.bias.data, a=-k, b=k)
 
 
 # ----------------------------------------------------------------------------------
