@@ -72,9 +72,9 @@ class RNNLayer(nn.Module):
         return out
 
 
-class LinearLayer(nn.Module):
+class OutputLayer(nn.Module):
     def __init__(self, hidden_size, vocab_size, p):
-        super(LinearLayer, self).__init__()
+        super(OutputLayer, self).__init__()
         self.fc = nn.Linear(hidden_size, vocab_size)
         self.init_weights_uniform()
         self.dropout = nn.Dropout(p)
@@ -130,12 +130,10 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
 
         self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
-        # self.last_rnn_layer = RNNLayer(hidden_size, hidden_size, 0)
-        self.output_layer = LinearLayer(self.hidden_size, self.vocab_size, self.p)
+        self.output_layer = OutputLayer(self.hidden_size, self.vocab_size, self.p)
 
         self.recurrent_layers = clones(self.rnn_layer, self.num_layers-1)
         self.recurrent_layers.insert(0, self.input_layer)
-        # self.recurrent_layers.append(self.last_rnn_layer)
         self.init_weights_uniform()
 
     def init_weights_uniform(self):
@@ -149,7 +147,6 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         This is used for the first mini-batch in an epoch, only.
         """
         h = torch.zeros([self.num_layers, self.batch_size, self.hidden_size])
-        # h = Variable(h, requires_grad=True)
         if torch.cuda.is_available():
             h = h.cuda()
         return h
@@ -310,7 +307,7 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
 
         self.input_layer = GRULayer(emb_size, hidden_size, p=self.p)
         self.gru_layer = GRULayer(hidden_size, hidden_size, p=self.p)
-        self.output_layer = LinearLayer(self.hidden_size, self.vocab_size, p=self.p)
+        self.output_layer = OutputLayer(self.hidden_size, self.vocab_size, p=self.p)
 
         self.gru_layers = clones(self.gru_layer, self.num_layers-1)
         self.gru_layers.insert(0, self.input_layer)
