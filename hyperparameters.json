@@ -14,13 +14,5 @@
   "13": {"model": "RNN", "optimizer": "SGD_LR_SCHEDULE", "learning_rate": "0.5", "batch_size": "512", "hidden_size": "4", "num_layers": "", "dropout": "0.85"},
   "14": {"model": "RNN", "optimizer": "SGD_LR_SCHEDULE", "learning_rate": "5", "batch_size": "1024", "hidden_size": "3", "num_layers": "", "dropout": "0.85"},
   "15": {"model": "RNN", "optimizer": "SGD_LR_SCHEDULE", "learning_rate": "30", "batch_size": "2048", "hidden_size": "3", "num_layers": "", "dropout": "0.8"},
-  "16": {"model": "RNN", "optimizer": "SGD_LR_SCHEDULE", "learning_rate": "50", "batch_size": "512", "hidden_size": "5", "num_layers": "", "dropout": "0.8"},
-  "17": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "0.00005", "batch_size": "2048", "hidden_size": "1", "num_layers": "", "dropout": "0.9"},
-  "18": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "0.0005", "batch_size": "512", "hidden_size": "3", "num_layers": "", "dropout": "0.9"},
-  "19": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "0.005", "batch_size": "1024", "hidden_size": "2", "num_layers": "", "dropout": "0.9"},
-  "20": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "0.05", "batch_size": "2048", "hidden_size": "2", "num_layers": "", "dropout": "0.85"},
-  "21": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "0.5", "batch_size": "512", "hidden_size": "4", "num_layers": "", "dropout": "0.85"},
-  "22": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "5", "batch_size": "1024", "hidden_size": "3", "num_layers": "", "dropout": "0.85"},
-  "23": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "30", "batch_size": "2048", "hidden_size": "3", "num_layers": "", "dropout": "0.8"},
-  "24": {"model": "RNN", "optimizer": "ADAM", "learning_rate": "50", "batch_size": "512", "hidden_size": "5", "num_layers": "", "dropout": "0.8"}
+  "16": {"model": "RNN", "optimizer": "SGD_LR_SCHEDULE", "learning_rate": "50", "batch_size": "512", "hidden_size": "5", "num_layers": "", "dropout": "0.8"}
 }
