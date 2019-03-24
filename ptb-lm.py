@@ -147,6 +147,7 @@ parser.add_argument('--evaluate', action='store_true',
                     ONCE for each model setting, and only after you've \
                     completed ALL hyperparameter tuning on the validation set.\
                     Note we are not requiring you to do this.")
+parser.add_argument('--load_weights', type=str)
 
 # DO NOT CHANGE THIS (setting the random seed makes experiments deterministic,
 # which helps for reproducibility)
@@ -193,10 +194,11 @@ else:
       of memory. \n You can try setting batch_size=1 to reduce memory usage")
     device = torch.device("cpu")
 
+
 ###############################################################################
 #
 #
-#LOADING & PROCESSING
+# LOADING & PROCESSING
 #
 ###############################################################################
 
@@ -328,8 +330,12 @@ else:
 
 model = model.to(device)
 
+if os.path.isfile(args.load_weights):
+    model.load_state_dict(torch.load(args.load_weights, map_location=device))
+
 # LOSS FUNCTION
 loss_fn = nn.CrossEntropyLoss()
+loss_timestep = nn.CrossEntropyLoss(reduction='none')
 if args.optimizer == 'ADAM':
     optimizer = torch.optim.Adam(model.parameters(), lr=args.initial_lr)
 
@@ -367,6 +373,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     """
     One epoch of training/validation (depending on flag is_train).
     """
+    acc_loss_per_timestep = torch.zeros((model.batch_size, model.seq_len)).to('cpu')
     if is_train:
         model.train()
     else:
@@ -391,7 +398,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             inputs = torch.from_numpy(x.astype(np.int64)).transpose(0, 1).contiguous().to(device)  # .cuda()
             model.zero_grad()
             hidden = repackage_hidden(hidden)
-            outputs, hidden = model(inputs, hidden)
+            outputs, hidden, temp = model(inputs, hidden)
 
         targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device)  # .cuda()
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
@@ -401,14 +408,31 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         # and all time-steps of the sequences.
         # For problem 5.3, you will (instead) need to compute the average loss
         # at each time-step separately.
-        loss = loss_fn(outputs.contiguous().view(-1, model.vocab_size), tt)
+
+        loss_per_timestep = loss_timestep(outputs.permute(1, -1, 0), targets.permute(-1, 0))
+        loss = torch.sum(torch.sum(loss_per_timestep, 1)) / (model.batch_size * model.seq_len)
         costs += loss.data.item() * model.seq_len
         losses.append(costs)
         iters += model.seq_len
+        final_timestep_loss = torch.sum(loss_per_timestep, 0)[-1]
+        # for i in range(model.seq_len):
+        #    temp[i][1].retain_grad()
+
         if args.debug:
             print(step, loss)
         if is_train:  # Only update parameters if training
             loss.backward()
+            #
+            # final_timestep_loss.backward()
+            # gradients = []
+            # for i in range(model.seq_len):
+            #    gradients.append(temp[i][1].grad)
+            # gradients = torch.stack(gradients)
+            # avg_gradients = torch.mean(gradients, 1)
+
+            # l2_norms = []
+            # for i in range(model.seq_len):
+            #    l2_norms.append(torch.norm(avg_gradients[i, :], 2))
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
             if args.optimizer == 'ADAM':
                 optimizer.step()
@@ -420,7 +444,11 @@ def run_epoch(model, data, is_train=False, lr=1.0):
                 print('step: ' + str(step) + '\t' \
                       + "loss (sum over all examples' seen this epoch):" + str(costs) + '\t' \
                       + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
-    return np.exp(costs / iters), losses
+        else:
+            acc_loss_per_timestep = torch.add(acc_loss_per_timestep, loss_per_timestep.detach().cpu())
+    avg_loss_per_timestep = acc_loss_per_timestep / step
+    avg_loss_per_timestep = torch.mean(avg_loss_per_timestep, 0)
+    return np.exp(costs / iters), losses, avg_loss_per_timestep
 
 
 ###############################################################################
@@ -452,10 +480,10 @@ for epoch in range(num_epochs):
         lr = lr * lr_decay  # decay lr if it is time
 
     # RUN MODEL ON TRAINING DATA
-    train_ppl, train_loss = run_epoch(model, train_data, True, lr)
+    train_ppl, train_loss, _ = run_epoch(model, train_data, True, lr)
 
     # RUN MODEL ON VALIDATION DATA
-    val_ppl, val_loss = run_epoch(model, valid_data)
+    val_ppl, val_loss, val_per_timestep = run_epoch(model, valid_data)
 
     # SAVE MODEL IF IT'S THE BEST SO FAR
     if val_ppl < best_val_so_far:
@@ -493,7 +521,8 @@ print('\nDONE\n\nSaving learning curves to ' + lc_path)
 np.save(lc_path, {'train_ppls': train_ppls,
                   'val_ppls': val_ppls,
                   'train_losses': train_losses,
-                  'val_losses': val_losses})
+                  'val_losses': val_losses,
+                  'val_loss_timestep': val_per_timestep})
 # NOTE ==============================================
 # To load these, run 
 # >>> x = np.load(lc_path)[()]
