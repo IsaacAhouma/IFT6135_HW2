@@ -1,6 +1,6 @@
 import json
 import argparse
-import subprocess
+from subprocess import call
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
@@ -11,8 +11,8 @@ if __name__ == '__main__':
         file = json.load(f)
 
     for experiment in file.values():
-        command = "msub -v model='{}',optimizer='{}',lr='{}',batch='{}',hidden='{}',layers='{}',dropout='{}' run.pbs"
-        command.format(
+        command = "python ptb-lm.py --model={} --optimizer={} --initial_lr={} --batch_size={} --hidden_size={} --num_layers={} --dp_keep_prob={}"
+        command = command.format(
             experiment.get('model'),
             experiment.get('optimizer'),
             experiment.get('learning_rate'),
@@ -21,7 +21,4 @@ if __name__ == '__main__':
             experiment.get('num_layers'),
             experiment.get('dropout')
         )
-        process = subprocess.Popen(command, shell=True, stdout=subprocess.PIPE)
-        returncode = process.wait()
-        stdout = process.communicate()[0]
-        print(stdout)
+        call(command)

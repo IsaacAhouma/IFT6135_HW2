@@ -129,7 +129,7 @@ parser.add_argument('--num_layers', type=int, default=2,
 # Other hyperparameters you may want to tune in your exploration
 parser.add_argument('--emb_size', type=int, default=200,
                     help='size of word embeddings')
-parser.add_argument('--num_epochs', type=int, default=40,
+parser.add_argument('--num_epochs', type=int, default=5,
                     help='number of epochs to stop after')
 parser.add_argument('--dp_keep_prob', type=float, default=0.35,
                     help='dropout *keep* probability. drop_prob = 1-dp_keep_prob \
@@ -186,8 +186,13 @@ torch.manual_seed(args.seed)
 
 # Use the GPU if you have one
 if torch.cuda.is_available():
+
+    # Find availbale GPU
+    os.system('nvidia-smi -q -d Memory |grep -A4 GPU|grep Free >tmp')
+    memory_available = [int(x.split()[2]) for x in open('tmp', 'r').readlines()]
+
     print("Using the GPU")
-    device = torch.device("cuda")
+    device = torch.device("cuda:{}".format(np.argmax(memory_available)))
 else:
     print("WARNING: You are about to run on cpu, and this will likely run out \
       of memory. \n You can try setting batch_size=1 to reduce memory usage")
