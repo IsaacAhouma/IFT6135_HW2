@@ -5,18 +5,17 @@ import multiprocessing
 
 
 def run_experiment(experiment):
-    for experiment in file.values():
-        command = "python ptb-lm.py --model={} --optimizer={} --initial_lr={} --batch_size={} --hidden_size={} --num_layers={} --dp_keep_prob={}"
-        command = command.format(
-            experiment.get('model'),
-            experiment.get('optimizer'),
-            experiment.get('learning_rate'),
-            experiment.get('batch_size'),
-            experiment.get('hidden_size'),
-            experiment.get('num_layers'),
-            experiment.get('dropout')
-        )
-        return call(command)
+    command = "python ptb-lm.py --model={} --optimizer={} --initial_lr={} --batch_size={} --hidden_size={} --num_layers={} --dp_keep_prob={}"
+    command = command.format(
+        experiment.get('model'),
+        experiment.get('optimizer'),
+        experiment.get('learning_rate'),
+        experiment.get('batch_size'),
+        experiment.get('hidden_size'),
+        experiment.get('num_layers'),
+        experiment.get('dropout')
+    )
+    return call(command)
 
 
 if __name__ == '__main__':
