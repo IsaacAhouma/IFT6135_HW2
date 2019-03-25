@@ -147,7 +147,7 @@ parser.add_argument('--evaluate', action='store_true',
                     ONCE for each model setting, and only after you've \
                     completed ALL hyperparameter tuning on the validation set.\
                     Note we are not requiring you to do this.")
-parser.add_argument('--load_weights', type=str)
+parser.add_argument('--load_weights', default=None, type=str)
 
 # DO NOT CHANGE THIS (setting the random seed makes experiments deterministic,
 # which helps for reproducibility)
@@ -330,7 +330,7 @@ else:
 
 model = model.to(device)
 
-if os.path.isfile(args.load_weights):
+if args.load_weights is not None and os.path.isfile(args.load_weights):
     model.load_state_dict(torch.load(args.load_weights, map_location=device))
 
 # LOSS FUNCTION
