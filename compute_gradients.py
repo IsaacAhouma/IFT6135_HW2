@@ -34,7 +34,7 @@ parser.add_argument('--optimizer', type=str, default='SGD_LR_SCHEDULE',
                     help='optimization algo to use; SGD, SGD_LR_SCHEDULE, ADAM')
 parser.add_argument('--seq_len', type=int, default=35,
                     help='number of timesteps over which BPTT is performed')
-parser.add_argument('--batch_size', type=int, default=20,
+parser.add_argument('--batch_size', type=int, default=100,
                     help='size of one minibatch')
 parser.add_argument('--initial_lr', type=float, default=20.0,
                     help='initial learning rate')
@@ -313,23 +313,23 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         iters += model.seq_len
         final_timestep_loss = torch.sum(loss_per_timestep, 0)[-1]
         for i in range(model.seq_len):
-            temp[i][1].retain_grad()
+            for j in range(len(temp[0])):
+                temp[i][j].retain_grad()
 
-        if args.debug:
-            print(step, loss)
         if is_train:  # Only update parameters if training
-            # loss.backward()
-
             final_timestep_loss.backward()
             gradients = []
+            timestep_grads = []
             for i in range(model.seq_len):
-                gradients.append(temp[i][1].grad)
-            gradients = torch.stack(gradients)
-            avg_gradients = torch.mean(gradients, 1)
+                layer_grads = temp[i][0].grad
+                for j in range(1, len(temp[0])):
+                    layer_grads = torch.cat((layer_grads, temp[i][j].grad), dim=-1)
+                layer_grads = torch.mean(layer_grads, dim=0)
+                timestep_grads.append(layer_grads)
 
             l2_norms = []
             for i in range(model.seq_len):
-                l2_norms.append(torch.norm(avg_gradients[i, :], 2))
+                l2_norms.append(torch.norm(timestep_grads[i], 2))
         break
     l2_norms = torch.stack(l2_norms).numpy()
     return l2_norms
@@ -343,4 +343,5 @@ def run_epoch(model, data, is_train=False, lr=1.0):
 
 l2_norms = run_epoch(model, train_data, True, lr)
 
-np.save(os.path.join(args.model, 'gradients.npy'), l2_norms)
+np.save(args.model+'gradients.npy', l2_norms)
+
