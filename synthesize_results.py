@@ -90,6 +90,50 @@ def plot_exploration_of_optimizers(fig, ax, curves, learning_curves, log, wallti
     pass
 
 
+def plot_hp_search(experiments):
+    fig = plt.figure()
+    ax = fig.add_subplot(111, label="1", axisbelow='True')
+
+    for exp in experiments:
+
+        epochs = range(len(exp['valid_ppl']))
+
+        ax.plot(epochs, exp['train_ppl'], 'b')
+
+        ax.set_xlabel("Epochs", color="k")
+        ax.set_ylabel("Perplexity", color="k")
+        ax.set_ylim(0, 700)
+        ax.tick_params(axis='x', colors="k")
+        ax.tick_params(axis='y', colors="k")
+
+        plt.grid(linestyle='dotted')
+
+        legend = ax.legend(['Train', 'Validation'], loc='best', fancybox=True, facecolor="white", framealpha=1)
+
+        fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig_name = 'model_comparison_epochs_{}.jpg'.format(config['model']['1'].lower())
+        plt.savefig(fig_name, dpi=300, bbox_inches='tight', pad_inches=0)
+
+        fig = plt.figure()
+        ax = fig.add_subplot(111, label="1", axisbelow='True')
+
+        ax.plot(wall_clock_time, train_ppl, "b", wall_clock_time, valid_ppl, 'r')
+
+        ax.set_xlabel('Wall Clock Time ($s$)', color="k")
+        ax.set_ylabel("Perplexity", color="k")
+        ax.set_ylim(0, 700)
+        ax.tick_params(axis='x', colors="k")
+        ax.tick_params(axis='y', colors="k")
+
+        plt.grid(linestyle='dotted')
+
+        legend = ax.legend(['Train', 'Validation'], loc='best', fancybox=True, facecolor="white", framealpha=1)
+
+        fig.tight_layout()  # otherwise the right y-label is slightly clipped
+        fig_name = 'model_comparison_time_{}.jpg'.format(config['model']['1'].lower())
+        plt.savefig(fig_name, dpi=300, bbox_inches='tight', pad_inches=0)
+
+
 def synthesize_model_comparison(path):
     # Get all experiments in folder
     experiments = get_experiments(path)
@@ -103,14 +147,92 @@ def synthesize_model_comparison(path):
         plot_model_comparison(config, curves, log, walltime)
 
 
+def synthesize_hps_search(path):
+    # Get all experiments in folder
+    model, optimizer, lr, batch, hidden, layers, dropout, train, val = [], [], [], [], [], [], [], [], []
+    experiments = get_experiments(path)
+
+    for experiment in experiments:
+        config = parse_configuration(experiment)
+        log, walltime = parse_log(experiment)
+        try:
+            curves = parse_learning_curves(experiment)
+        except:
+            continue
+
+        # Add results
+        model.append(config['model']['1'].lower())
+        optimizer.append(config['optimizer']['1'].lower())
+        lr.append(config['initial_lr']['1'].lower())
+        batch.append(config['batch_size']['1'].lower())
+        hidden.append(config['hidden_size']['1'].lower())
+        layers.append(config['num_layers']['1'].lower())
+        dropout.append(config['dp_keep_prob']['1'].lower())
+
+        valid_ppl = curves.get('val_ppls')
+        train_ppl = curves.get('train_ppls')
+        train.append(train_ppl[-1])
+        val.append(valid_ppl[-1])
+
+    df = pd.DataFrame(
+        {'Model': model,
+         'Optimizer': optimizer,
+         'Learning Rate': lr,
+         'Batch Size': batch,
+         'Hidden Layers': hidden,
+         'Number Layers': layers,
+         'Dropot': dropout,
+         'Train PPL': train,
+         'Validation PPl': val,
+         })
+    df.to_csv('results.csv', encoding='utf-8', index=False)
+
+    def synthesize_best_hp_search(path):
+        # Get all experiments in folder
+        run = []
+        experiments = get_experiments(path)
+
+        for experiment in experiments:
+            config = parse_configuration(experiment)
+            log, walltime = parse_log(experiment)
+            try:
+                curves = parse_learning_curves(experiment)
+            except:
+                continue
+
+            valid_ppl = curves.get('val_ppls')
+            train_ppl = curves.get('train_ppls')
+
+            # Add results
+            run.append({
+                'model': config['model']['1'].capitalize(),
+                'optimizer': " ".join(config['optimizer']['1'].split('_')).capitalize(),
+                'lr': config['initial_lr']['1'].lower(),
+                'batch': config['batch_size']['1'],
+                'hidden_size': config['hidden_size']['1'],
+                'layers': config['num_layers']['1'],
+                'dropout': config['dp_keep_prob']['1'],
+                'train': train_ppl,
+                'val': valid_ppl,
+                'walltime': walltime
+            })
+
+        models = set([x['model'] for x in run])
+        for model in models:
+            model_experiments = [x for x in [models] if x['model'] == model]
+            plot_hp_search(model_experiments)
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--path', help='Path to results')
+    parser.add_argument('--path', default='results', help='Path to results')
     args = parser.parse_args()
 
-    model_comparison_path = os.path.join(args.path, 'model_comparison')
+    # model_comparison_path = os.path.join(args.path, 'model_comparison')
+    # synthesize_model_comparison(model_comparison_path)
 
-    synthesize_model_comparison(model_comparison_path)
+    hp_search_path = os.path.join(args.path)
+    synthesize_hps_search(hp_search_path)
+
 
 
 
