@@ -6,7 +6,7 @@ import torch.nn.functional as F
 import math, copy, time
 from torch.autograd import Variable
 import matplotlib.pyplot as plt
-
+from torch.distributions.categorical import Categorical
 
 # NOTE ==============================================
 #
@@ -127,7 +127,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         self.p = 1 - dp_keep_prob
         self.dropout = nn.Dropout(self.p)
         self.embeddings = nn.Embedding(vocab_size, emb_size)
-
+        self.softmax = nn.Softmax(dim=-1)
         self.input_layer = RNNLayer(emb_size, hidden_size, self.p)
         self.rnn_layer = RNNLayer(hidden_size, hidden_size, self.p)
         self.output_layer = OutputLayer(self.hidden_size, self.vocab_size, self.p)
@@ -227,11 +227,28 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
             - Sampled sequences of tokens
                         shape: (generated_seq_len, batch_size)
         """
-        samples = torch.zeros([generated_seq_len, self.batch_size], device=input.device)
-        for i in generated_seq_len:
-            logits, hidden = self.forward(input, hidden)
-            input = torch.argmax(nn.Softmax(logits))
-            samples[i] = input
+
+        input = input.view(1, -1)
+        samples = input
+        logits = torch.zeros([generated_seq_len, input.shape[1], self.vocab_size], device=input.device)
+        C = self.embeddings(input)
+        # C = C.view(generated_seq_len, -1, self.emb_size)
+        for t in range(generated_seq_len):
+            input_embedding = C[0]  # x shape: [batch_size, embed_size]
+            h = []
+            for layer in range(self.num_layers):
+                temp = self.recurrent_layers[layer](input_embedding, hidden[layer])
+                input_embedding = temp
+                h.append(temp)
+                x = temp  #
+
+            hidden = torch.stack(h)
+            logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
+            softmaxed = F.softmax(logits[t], dim=-1)
+            token_out = Categorical(probs=softmaxed).sample()
+            token_out = token_out.view(1, -1)
+            samples = torch.cat((samples, token_out), dim=0)
+            C = self.embeddings(token_out)
 
         return samples
 
@@ -344,14 +361,29 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
             hidden_timesteps.append(h)
             hidden = torch.stack(h)
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
+
         return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden, hidden_timesteps
 
     def generate(self, input, hidden, generated_seq_len):
-        samples = torch.zeros([generated_seq_len, self.batch_size], device=input.device)
-        for i in generated_seq_len:
-            logits, hidden = self.forward(input, hidden)
-            input = torch.argmax(nn.Softmax(logits))
-            samples[i] = input
+        input = input.view(1, -1)
+        samples = input
+        logits = torch.zeros([generated_seq_len, input.shape[1], self.vocab_size], device=input.device)
+        C = self.embeddings(input)
+        # C = C.view(generated_seq_len, -1, self.emb_size)
+        for t in range(generated_seq_len):
+            x = C[0]  # x shape: [batch_size, embed_size]
+            h = []
+            for layer in range(self.num_layers):
+                temp = self.gru_layers[layer](x, hidden[layer])
+                h.append(temp)
+                x = temp  #
+            hidden = torch.stack(h)
+            logits[t] = self.output_layer(x)  # logits[t] shape: [batch_se]
+            softmaxed = F.softmax(logits[t], dim=-1)
+            token_out = Categorical(probs=softmaxed).sample()
+            token_out = token_out.view(1, -1)
+            samples = torch.cat((samples, token_out), dim=0)
+            C = self.embeddings(token_out)
 
         return samples
 
