@@ -176,14 +176,20 @@ def generate(model, generated_seq_len, num_of_samples):
     model.eval()
     model.zero_grad()
     hidden = model.init_hidden().to('cpu')
-    samples = model.generate(inputs, hidden, generated_seq_len-1) # (seq_len, batch_size)
-    sample_words = [' '.join([id_2_word[t] for t in seq]) for seq in samples.detach().cpu().numpy().T]
+    samples = model.generate(inputs, hidden, generated_seq_len-1)  # (seq_len, batch_size)
+    sample_words = []
+    for i in range(num_of_samples):
+        sample = samples[:, i]
+        sample = torch.unsqueeze(sample, -1)
+        sample_words.append([' '.join([id_2_word[t] for t in seq]) for seq in sample.detach().cpu().numpy().T])
+
     return sample_words
 
 
 samples1 = generate(model, 35, args.batch_size)
 samples2 = generate(model, 70, args.batch_size)
 
-np.save('generated_gru.npy', samples1, samples2)
+np.save('generated_rnn_1.npy', samples1)
+np.save('generated_rnn_2.npy', samples2)
 
 
