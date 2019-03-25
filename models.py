@@ -189,6 +189,7 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size], device=inputs.device)
         C = self.embeddings(inputs)
         C = C.view(self.seq_len, -1, self.emb_size)
+        hidden_timesteps = []
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
             h = []
@@ -196,9 +197,11 @@ class RNN(nn.Module):  # Implement a stacked vanilla RNN with Tanh nonlinearitie
                 temp = self.recurrent_layers[layer](x, hidden[layer])
                 h.append(temp)
                 x = temp  #
+            hidden_timesteps.append(h)
             hidden = torch.stack(h)
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
-        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+
+        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden, hidden_timesteps
 
     def generate(self, input, hidden, generated_seq_len):
         # Compute the forward pass, as in the self.forward method (above).
@@ -330,6 +333,7 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
         logits = torch.zeros([self.seq_len, self.batch_size, self.vocab_size], device=inputs.device)
         C = self.embeddings(inputs)
         C = C.view(self.seq_len, -1, self.emb_size)
+        hidden_timesteps = []
         for t in range(self.seq_len):
             x = C[t]  # x shape: [batch_size, embed_size]
             h = []
@@ -337,9 +341,10 @@ class GRU(nn.Module):  # Implement a stacked GRU RNN
                 temp = self.gru_layers[layer](x, hidden[layer])
                 h.append(temp)
                 x = temp  #
+            hidden_timesteps.append(h)
             hidden = torch.stack(h)
             logits[t] = self.output_layer(x)  # logits[t] shape: [batch_size, vocab_size]
-        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden
+        return logits.view(self.seq_len, self.batch_size, self.vocab_size), hidden, hidden_timesteps
 
     def generate(self, input, hidden, generated_seq_len):
         samples = torch.zeros([generated_seq_len, self.batch_size], device=input.device)
