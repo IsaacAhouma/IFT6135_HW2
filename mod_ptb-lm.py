@@ -1,7 +1,7 @@
 #!/bin/python
 # coding: utf-8
 
-# Code outline/scaffold for 
+# Code outline/scaffold for
 # ASSIGNMENT 2: RNNs, Attention, and Optimization
 # By Tegan Maharaj, David Krueger, and Chin-Wei Huang
 # IFT6135 at University of Montreal
@@ -13,33 +13,33 @@
 #    https://github.com/teganmaharaj/zoneout/blob/master/zoneout_word_ptb.py
 #    https://github.com/harvardnlp/annotated-transformer
 
-# GENERAL INSTRUCTIONS: 
-#    - ! IMPORTANT! 
-#      Unless we're otherwise notified we will run exactly this code, importing 
-#      your models from models.py to test them. If you find it necessary to 
-#      modify or replace this script (e.g. if you are using TensorFlow), you 
-#      must justify this decision in your report, and contact the TAs as soon as 
-#      possible to let them know. You are free to modify/add to this script for 
-#      your own purposes (e.g. monitoring, plotting, further hyperparameter 
-#      tuning than what is required), but remember that unless we're otherwise 
-#      notified we will run this code as it is given to you, NOT with your 
+# GENERAL INSTRUCTIONS:
+#    - ! IMPORTANT!
+#      Unless we're otherwise notified we will run exactly this code, importing
+#      your models from models.py to test them. If you find it necessary to
+#      modify or replace this script (e.g. if you are using TensorFlow), you
+#      must justify this decision in your report, and contact the TAs as soon as
+#      possible to let them know. You are free to modify/add to this script for
+#      your own purposes (e.g. monitoring, plotting, further hyperparameter
+#      tuning than what is required), but remember that unless we're otherwise
+#      notified we will run this code as it is given to you, NOT with your
 #      modifications.
-#    - We encourage you to read and understand this code; there are some notes 
+#    - We encourage you to read and understand this code; there are some notes
 #      and comments to help you.
-#    - Typically, all of your code to submit should be written in models.py; 
+#    - Typically, all of your code to submit should be written in models.py;
 #      see further instructions at the top of that file / in TODOs.
-#          - RNN recurrent unit 
+#          - RNN recurrent unit
 #          - GRU recurrent unit
 #          - Multi-head attention for the Transformer
-#    - Other than this file and models.py, you will probably also write two 
-#      scripts. Include these and any other code you write in your git repo for 
+#    - Other than this file and models.py, you will probably also write two
+#      scripts. Include these and any other code you write in your git repo for
 #      submission:
 #          - Plotting (learning curves, loss w.r.t. time, gradients w.r.t. hiddens)
-#          - Loading and running a saved model (computing gradients w.r.t. hiddens, 
+#          - Loading and running a saved model (computing gradients w.r.t. hiddens,
 #            and for sampling from the model)
 
-# PROBLEM-SPECIFIC INSTRUCTIONS:   
-#    - For Problems 1-3, paste the code for the RNN, GRU, and Multi-Head attention 
+# PROBLEM-SPECIFIC INSTRUCTIONS:
+#    - For Problems 1-3, paste the code for the RNN, GRU, and Multi-Head attention
 #      respectively in your report, in a monospace font.
 #    - For Problem 4.1 (model comparison), the hyperparameter settings you should run are as follows:
 #          --model=RNN --optimizer=ADAM --initial_lr=0.0001 --batch_size=20 --seq_len=35 --hidden_size=1500 --num_layers=2 --dp_keep_prob=0.35 --save_best
@@ -373,6 +373,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
     """
     One epoch of training/validation (depending on flag is_train).
     """
+    acc_loss_per_timestep = torch.zeros((model.batch_size, model.seq_len)).to('cpu')
     if is_train:
         model.train()
     else:
@@ -397,7 +398,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             inputs = torch.from_numpy(x.astype(np.int64)).transpose(0, 1).contiguous().to(device)  # .cuda()
             model.zero_grad()
             hidden = repackage_hidden(hidden)
-            outputs, hidden, _ = model(inputs, hidden)
+            outputs, hidden, temp = model(inputs, hidden)
 
         targets = torch.from_numpy(y.astype(np.int64)).transpose(0, 1).contiguous().to(device)  # .cuda()
         tt = torch.squeeze(targets.view(-1, model.batch_size * model.seq_len))
@@ -407,7 +408,9 @@ def run_epoch(model, data, is_train=False, lr=1.0):
         # and all time-steps of the sequences.
         # For problem 5.3, you will (instead) need to compute the average loss
         # at each time-step separately.
-        loss = loss_fn(outputs.contiguous().view(-1, model.vocab_size), tt)
+
+        loss_per_timestep = loss_timestep(outputs.permute(1, -1, 0), targets.permute(-1, 0))
+        loss = torch.sum(torch.sum(loss_per_timestep, 1)) / (model.batch_size * model.seq_len)
         costs += loss.data.item() * model.seq_len
         losses.append(costs)
         iters += model.seq_len
@@ -416,6 +419,7 @@ def run_epoch(model, data, is_train=False, lr=1.0):
             print(step, loss)
         if is_train:  # Only update parameters if training
             loss.backward()
+
             torch.nn.utils.clip_grad_norm_(model.parameters(), 0.25)
             if args.optimizer == 'ADAM':
                 optimizer.step()
@@ -427,8 +431,11 @@ def run_epoch(model, data, is_train=False, lr=1.0):
                 print('step: ' + str(step) + '\t' \
                       + "loss (sum over all examples' seen this epoch):" + str(costs) + '\t' \
                       + 'speed (wps):' + str(iters * model.batch_size / (time.time() - start_time)))
-
-    return np.exp(costs / iters), losses
+        else:
+            acc_loss_per_timestep = torch.add(acc_loss_per_timestep, loss_per_timestep.detach().cpu())
+    avg_loss_per_timestep = acc_loss_per_timestep / step
+    avg_loss_per_timestep = torch.mean(avg_loss_per_timestep, 0)
+    return np.exp(costs / iters), losses, avg_loss_per_timestep
 
 
 ###############################################################################
@@ -501,8 +508,9 @@ print('\nDONE\n\nSaving learning curves to ' + lc_path)
 np.save(lc_path, {'train_ppls': train_ppls,
                   'val_ppls': val_ppls,
                   'train_losses': train_losses,
-                  'val_losses': val_losses})
+                  'val_losses': val_losses,
+                  'val_loss_timestep': val_per_timestep})
 # NOTE ==============================================
-# To load these, run 
+# To load these, run
 # >>> x = np.load(lc_path)[()]
 # You will need these values for plotting learning curves (Problem 4)
