@@ -460,7 +460,7 @@ for epoch in range(num_epochs):
         lr = lr * lr_decay  # decay lr if it is time
 
     # RUN MODEL ON TRAINING DATA
-    train_ppl, train_loss, _ = run_epoch(model, train_data, True, lr)
+    train_ppl, train_loss = run_epoch(model, train_data, True, lr)
 
     # RUN MODEL ON VALIDATION DATA
     val_ppl, val_loss, val_per_timestep = run_epoch(model, valid_data)
